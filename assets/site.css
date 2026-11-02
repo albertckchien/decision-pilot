@@ -1,0 +1,112 @@
+/* 第三條路（試跑）共用樣式。方向：The printed annual（seed 1505810039），配色重抽成 Sheet and biro（用戶 2026-11-02：深藍配粉紅太醜）。
+   中文用 Noto Serif TC（標題）和 Noto Sans TC（內文）：抽到的 Gambarino / General Sans 沒有中文字。 */
+:root {
+  --bg: #ffffff;
+  --surface: #f4f4f4;
+  --surface-2: #e8e8e8;
+  --ink: #111111;
+  --muted: #6b6b6b;
+  --accent: #1a4be0;
+  --accent-ink: #ffffff;
+  --accent-hover: #1239b0;
+  --field: #111111;
+  --field-2: #1d1d1d;
+  --field-ink: #f2f2f2;
+  --field-muted: #a8a8a8;
+  --line: #cfcfcf;
+
+  --font-display: "Noto Serif TC", "Songti TC", serif;
+  --font-text: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+
+  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  --step-display: clamp(3.4rem, 0.6rem + 8.4vw, 9rem);
+
+  --margin: clamp(1.25rem, 2.2vw, 2rem);
+  --gutter: clamp(1rem, 2vw, 2rem);
+  --section: clamp(6rem, 12vw, 13rem);
+  --axis: 34%;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --t-press: 140ms;
+  --t-hover: 180ms;
+  --t-ui: 240ms;
+  --t-reveal: 800ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-text); font-size: var(--step-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, p, figure, blockquote, ul, ol, dl, dd { margin: 0; }
+ul[class], ol[class] { padding: 0; list-style: none; }
+img, video, svg { display: block; max-width: 100%; }
+img { height: auto; background: var(--surface); }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
+.display { font-size: var(--step-display); line-height: 1.02; }
+.head { font-size: var(--step-head); line-height: 1.15; }
+.lead { font-size: var(--step-lead); line-height: 1.5; }
+.small { font-size: var(--step-small); line-height: 1.5; }
+.muted { color: var(--muted); }
+p { max-width: 38em; }
+.nums { font-variant-numeric: tabular-nums; }
+.wrap { padding-inline: var(--margin); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* 按鈕：一種形狀，方角，實心粉紅 */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 3.25rem; padding: 0 1.6rem; background: var(--accent); color: var(--accent-ink); font-weight: 500; text-decoration: none; border: 0; cursor: pointer; transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) var(--ease-out); }
+.btn:hover { background: var(--accent-hover); }
+.btn:active { transform: scale(0.97); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn.quiet { background: var(--surface-2); color: var(--ink); }
+.btn.quiet:hover { background: #dcdcdc; }
+.link { text-decoration: underline; text-underline-offset: 0.25em; text-decoration-thickness: 1px; transition: color var(--t-hover); }
+.link:hover { color: var(--accent); }
+
+/* 頁首：字標、幾個連結、一個動作 */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1.25rem var(--margin); }
+.wordmark { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; text-decoration: none; }
+.bar nav { display: flex; gap: 1.5rem; font-size: var(--step-small); }
+.bar nav a { text-decoration: none; }
+.bar nav a:hover { text-decoration: underline; text-underline-offset: 0.25em; }
+
+/* 固定頁尾的求助訊息（用戶 2026-11-02 定：人人都看得到，不點名） */
+.helpline { background: var(--surface); padding: 2rem var(--margin); font-size: var(--step-small); }
+.helpline p { max-width: 60em; }
+
+/* 進場動畫：沒有 JS 時內容照樣看得到 */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out); transition-delay: calc(var(--i, 0) * 80ms); }
+  .js [data-reveal].in { opacity: 1; transform: none; }
+  .lines .line { display: block; overflow: hidden; padding-bottom: 0.1em; margin-bottom: -0.1em; }
+  .lines [data-line] { display: block; }
+  .js .lines [data-line] { transform: translateY(105%); animation: rise 900ms var(--ease-expo) forwards; animation-delay: calc(var(--i, 0) * 110ms + 100ms); }
+  @keyframes rise { to { transform: none; } }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* 表單（app 畫面） */
+.field { display: grid; gap: 0.5rem; }
+.field label, .field legend { font-weight: 500; }
+.field .hint { font-size: var(--step-small); color: var(--muted); }
+.field input[type=text], .field input[type=email], .field input[type=url], .field select, .field textarea {
+  width: 100%; background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 0.8rem 0.9rem; border-radius: 0; min-height: 3rem;
+  transition: border-color var(--t-hover), background-color var(--t-hover);
+}
+.field textarea { min-height: 14rem; line-height: 1.7; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }
+.field .err { color: #b3261e; font-size: var(--step-small); }
+.choices { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.choices label { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.9rem; background: var(--surface); cursor: pointer; font-weight: 400; transition: background-color var(--t-hover); }
+.choices label:hover { background: var(--surface-2); }
+.choices input { accent-color: var(--accent); }
+.choices label:has(input:checked) { background: var(--accent); color: var(--accent-ink); }
+fieldset { border: 0; padding: 0; margin: 0; }

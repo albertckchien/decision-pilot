@@ -1,0 +1,178 @@
+{
+  "case": "示意：要不要接新加坡外派（測試用，數字是假設）",
+  "start_year": 2026,
+  "age": 41,
+  "home": "TWN",
+  "savings": 280,
+  "monthly_spend": 10,
+  "retire_age": 63,
+  "pension_monthly": 3,
+  "family": {
+    "kids": [
+      7,
+      10
+    ],
+    "parents_age": 70,
+    "spouse_gender": "F"
+  },
+  "goals": [
+    {
+      "name": "事業成長",
+      "metric": "career"
+    },
+    {
+      "name": "家庭和小孩",
+      "metric": "family"
+    },
+    {
+      "name": "財務穩定",
+      "metric": "wealth"
+    }
+  ],
+  "options": [
+    {
+      "id": "A",
+      "name": "全家外派",
+      "sub": "兩年新加坡，回台升處長",
+      "phases": [
+        {
+          "from": 0,
+          "to": 2,
+          "country": "SGP",
+          "income": 300,
+          "spouse_income": 0
+        },
+        {
+          "from": 2,
+          "to": 99,
+          "country": "TWN",
+          "income": 250,
+          "spouse_income": 130
+        }
+      ],
+      "events": [
+        {
+          "text": "全家搬到新加坡",
+          "p": 1,
+          "at": [
+            0,
+            0
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "f": -3,
+            "c": 4
+          }
+        },
+        {
+          "text": "小孩在國際學校不太適應",
+          "p": 0.35,
+          "at": [
+            0,
+            1
+          ],
+          "once": true,
+          "kind": "hit",
+          "effect": {
+            "f": -4
+          }
+        },
+        {
+          "text": "東南亞的經銷商簽下來了",
+          "p": 0.6,
+          "at": [
+            0,
+            1
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "c": 8
+          }
+        },
+        {
+          "text": "照合約回台灣升處長",
+          "p": 0.8,
+          "at": [
+            2,
+            2
+          ],
+          "once": true,
+          "group": "promo",
+          "kind": "big",
+          "effect": {
+            "c": 12,
+            "income": 0.12
+          }
+        },
+        {
+          "text": "提前回台，升處長的保證沒了",
+          "p": 1,
+          "at": [
+            2,
+            2
+          ],
+          "once": true,
+          "group": "promo",
+          "kind": "hit",
+          "effect": {
+            "c": -6
+          }
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "name": "留在台灣",
+      "sub": "原職，等下一個處長缺",
+      "phases": [
+        {
+          "from": 0,
+          "to": 99,
+          "country": "TWN",
+          "income": 220,
+          "spouse_income": 130
+        }
+      ],
+      "events": [
+        {
+          "text": "下一個處長的缺出來，你升上去了",
+          "p": 0.25,
+          "at": [
+            2,
+            6
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "c": 12,
+            "income": 0.12
+          }
+        },
+        {
+          "text": "同事從新加坡回來升處長，變成你的主管",
+          "p": 0.4,
+          "at": [
+            2,
+            3
+          ],
+          "once": true,
+          "kind": "hit",
+          "effect": {
+            "c": -5
+          }
+        }
+      ]
+    }
+  ],
+  "titles": [
+    "業務專員",
+    "業務主任",
+    "業務經理",
+    "處長",
+    "協理",
+    "副總經理"
+  ],
+  "title_index": 2
+}

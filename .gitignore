@@ -1,0 +1,7 @@
+# design-taste-frontend 的工作檔（方向抽籤、檢查截圖），不進版控
+.taste-skill/
+# 本機預覽和編輯器
+.claude/
+node_modules/
+Thumbs.db
+.DS_Store

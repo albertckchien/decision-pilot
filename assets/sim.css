@@ -1,0 +1,76 @@
+/* 人生模擬播放器（照示意頁 v2，用戶 2026-11-03 同意） */
+.sim-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:4px;margin:1rem 0}
+.sim-opt{background:var(--bg);text-align:left;padding:.9rem 1.1rem;border:0;cursor:pointer;transition:background-color .18s}
+.sim-opt:hover{background:var(--surface-2)}
+.sim-opt[aria-pressed=true]{background:var(--accent);color:#fff}
+.sim-opt strong{display:block;font-family:var(--font-display);font-size:1.2rem}
+.sim-opt span{font-size:.85rem;opacity:.85}
+.sim-ctrl{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:1rem}
+.sim-ctrl button{background:var(--bg);border:0;padding:.55rem 1rem;min-height:2.75rem;cursor:pointer;transition:background-color .18s,transform .14s}
+.sim-ctrl button:hover{background:var(--surface-2)}
+.sim-ctrl button:active{transform:scale(.96)}
+.sim-ctrl button[aria-pressed=true]{background:var(--ink);color:#fff}
+.sim-ctrl .go{background:var(--accent);color:#fff}
+.sim-ctrl .sp{flex:1}
+.sim-stages{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.sim-stage{background:var(--bg);padding:1rem;position:relative;overflow:hidden}
+.sim-stage h3{font-size:1.1rem;display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+.sim-stage h3 small{font-family:var(--font-text);font-size:.8rem;color:var(--muted);font-weight:400}
+.sim-good-t{color:var(--accent)}
+.sim-scene{position:relative;height:180px;margin-top:.6rem;background:#dfe7f7;overflow:hidden;transition:background-color 1.2s}
+.sim-scene.alt{background:#dff3ec}.sim-scene.old{background:#efe8dc}
+.sim-city{position:absolute;bottom:36px;left:0;width:200%;height:86px;opacity:.55;animation:sim-pan 30s linear infinite}
+@keyframes sim-pan{to{transform:translateX(-50%)}}
+.sim-ground{position:absolute;bottom:0;left:0;right:0;height:36px;background:#c9d2c5}
+.sim-who{position:absolute;bottom:28px;left:46%}
+.sim-kid{position:absolute;bottom:28px;transition:opacity .8s}
+.sim-place{position:absolute;top:.5rem;left:.6rem;font-size:.85rem;background:rgba(255,255,255,.85);padding:.15rem .5rem}
+.sim-age{position:absolute;top:.4rem;right:.6rem;font-family:var(--font-display);font-size:2.3rem;line-height:1;text-align:right}
+.sim-age small{display:block;font-family:var(--font-text);font-size:.8rem;color:var(--muted)}
+.sim-pop{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-size:.92rem;font-weight:500;background:#fff;padding:.3rem .7rem;opacity:0;white-space:nowrap;pointer-events:none;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.sim-pop.show{animation:sim-pop 1.4s cubic-bezier(.22,1,.36,1) forwards}
+.sim-pop.big{background:var(--accent);color:#fff}.sim-pop.hit{background:#111;color:#fff}
+@keyframes sim-pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}20%{opacity:1;transform:translate(-50%,-60%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-120%)}}
+.sim-bars{display:grid;grid-template-columns:3.2em 1fr 4.6em;gap:.25rem .5rem;align-items:center;margin:.8rem 0;font-size:.85rem}
+.sim-bar{height:10px;background:var(--surface);position:relative}
+.sim-bar i{position:absolute;inset:0 auto 0 0;background:var(--ink);transition:width .7s cubic-bezier(.22,1,.36,1)}
+.sim-bar.money i{background:var(--accent)}
+.sim-bars b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+.sim-feed{list-style:none;padding:0;margin:0;display:grid;gap:4px;height:22rem;overflow:hidden;align-content:start}
+.sim-feed li{background:var(--surface);padding:.45rem .7rem;font-size:.92rem;display:grid;grid-template-columns:3.4em 1fr;gap:.5rem;animation:sim-in .5s cubic-bezier(.22,1,.36,1)}
+.sim-feed li .y{color:var(--muted);font-variant-numeric:tabular-nums}
+.sim-feed li.big{background:var(--accent);color:#fff}.sim-feed li.big .y{color:#cfd9ff}
+.sim-feed li.hit,.sim-feed li.end{background:#111;color:#fff}.sim-feed li.hit .y,.sim-feed li.end .y{color:#aaa}
+.sim-feed li.ff{background:var(--surface-2)}
+@keyframes sim-in{from{opacity:0;transform:translateY(-10px)}}
+.sim-map{display:grid;grid-template-columns:repeat(25,1fr);gap:2px;margin-top:.8rem}
+.sim-map span{aspect-ratio:1;background:var(--surface);transition:background-color .4s}
+.sim-maplab{font-size:.8rem;color:var(--muted);margin-top:.3rem;display:flex;justify-content:space-between;gap:.5rem}
+.sim-card{position:absolute;inset:0;background:var(--ink);color:#fff;padding:1.3rem;display:flex;flex-direction:column;gap:.7rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .6s,transform .6s cubic-bezier(.22,1,.36,1);overflow:auto}
+.sim-card.show{opacity:1;pointer-events:auto;transform:none}
+.sim-card h4{font-family:var(--font-display);font-size:1.4rem;margin:0}
+.sim-card .row{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem}
+.sim-card .row div{background:#222;padding:.6rem}
+.sim-card .row b{display:block;font-family:var(--font-display);font-size:1.25rem}
+.sim-card .row span{font-size:.8rem;color:#bbb}
+.sim-card ul{margin:0;padding-left:1.1rem;font-size:.9rem;display:grid;gap:.2rem}
+.sim-card .again{margin-top:auto;align-self:flex-start;background:#fff;color:#111;border:0;padding:.5rem 1rem;cursor:pointer}
+.sim-note{font-size:.85rem;color:var(--muted);margin-top:.8rem}
+@media(max-width:760px){.sim-stages{grid-template-columns:1fr}.sim-stages[data-one=good] .sim-stage.bad,.sim-stages[data-one=bad] .sim-stage.good{display:none}.sim-map{grid-template-columns:repeat(15,1fr)}}
+@media(min-width:761px){.sim-only-m{display:none}}
+@media(prefers-reduced-motion:reduce){.sim-city,.sim-pop.show,.sim-feed li{animation:none}}
+
+.sim-family{display:flex;flex-wrap:wrap;gap:.4rem;font-size:.88rem;margin:.6rem 0}
+.sim-family span{background:var(--bg);padding:.25rem .6rem}
+/* 像素場景和個人資訊（用戶 2026-11-03：8-bit 風、資訊不要太少） */
+.sim-scene{height:auto;aspect-ratio:16/9;background:#b9c9ee}
+.sim-px{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.sim-place,.sim-age,.sim-pop{z-index:2}
+.sim-place{font-weight:500;outline:2px solid #111}
+.sim-pop{outline:2px solid #111;top:30%}
+.sim-profile{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin-top:.7rem;font-size:.86rem}
+.sim-profile>div{background:var(--surface);padding:.6rem .7rem}
+.sim-profile h4{font-family:var(--font-text);font-size:.8rem;font-weight:500;color:var(--muted);margin:0 0 .3rem}
+.sim-profile dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.15rem .6rem}
+.sim-profile dt{color:var(--muted)}
+.sim-profile dd{margin:0}

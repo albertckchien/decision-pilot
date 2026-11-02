@@ -1,0 +1,55 @@
+/* 填寫和進度頁（app 畫面）：同一套顏色和字，版面安靜。 */
+.app .bar { position: sticky; top: 0; background: var(--bg); z-index: 5; }
+.progress { height: 4px; background: var(--surface); --p: 0%; position: relative; }
+.progress::after { content: ""; position: absolute; inset: 0; width: var(--p); background: var(--accent); transition: width var(--t-ui) var(--ease-out); }
+.app-main { max-width: 46rem; margin: 0 auto; padding: 3rem var(--margin) 6rem; min-height: 70svh; }
+.step h2 { margin-bottom: 2rem; outline: none; }
+.fields { display: grid; gap: 2rem; }
+.field .opt { color: var(--muted); font-weight: 400; margin-left: 0.25rem; }
+.field textarea.short { min-height: 6rem; }
+.checkline { display: flex; gap: 0.75rem; align-items: flex-start; font-weight: 500; cursor: pointer; }
+.checkline input { margin-top: 0.4rem; width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+.nav-row { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem; }
+.consent { background: var(--surface); padding: 1.5rem; margin-bottom: 2rem; display: grid; gap: 0.75rem; }
+.consent h3 { font-size: var(--step-lead); margin-top: 0.5rem; }
+.consent ul { padding-left: 1.2rem; display: grid; gap: 0.4rem; }
+.filelist { list-style: none; padding: 0; display: grid; gap: 0.5rem; margin-top: 0.5rem; }
+.filelist li { display: flex; justify-content: space-between; gap: 1rem; background: var(--surface); padding: 0.6rem 0.9rem; }
+.filelist .link { background: none; border: 0; cursor: pointer; }
+input[type=file] { padding: 0.75rem 0; }
+input[type=file]::file-selector-button { background: var(--surface-2); color: var(--ink); border: 0; padding: 0.6rem 1rem; margin-right: 1rem; cursor: pointer; }
+.review { background: var(--surface); padding: 1.5rem; margin-top: 2.5rem; }
+.review h3 { font-size: var(--step-lead); margin-bottom: 1rem; }
+.review dl { display: grid; grid-template-columns: 9em 1fr; gap: 0.4rem 1rem; }
+.review dt { color: var(--muted); }
+.submit-status { margin-top: 1.5rem; }
+
+/* 進度頁 */
+.stages { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 1.5rem 0 3rem; }
+.stages li { background: var(--surface); padding: 0.75rem; font-size: var(--step-small); }
+.stages li.done { background: var(--surface-2); }
+.stages li.now { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.card { background: var(--surface); padding: clamp(1.25rem, 3vw, 2rem); margin-bottom: 2rem; }
+.card h2 { margin-bottom: 1rem; }
+.md h1 { font-size: var(--step-head); margin: 0 0 1.5rem; }
+.md h2 { font-size: var(--step-lead); margin: 2.25rem 0 0.75rem; }
+.md h3 { font-size: var(--step-body); font-family: var(--font-text); font-weight: 500; margin: 1.5rem 0 0.5rem; }
+.md p, .md li { max-width: 40em; }
+.md p + p { margin-top: 0.9em; }
+.md ul, .md ol { padding-left: 1.3rem; margin: 0.75rem 0; display: grid; gap: 0.35rem; }
+.md table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-variant-numeric: tabular-nums; display: block; overflow-x: auto; }
+.md th, .md td { padding: 0.55rem 0.7rem; text-align: left; vertical-align: top; }
+.md thead th { color: var(--muted); font-weight: 500; }
+.md tbody tr:nth-child(odd) { background: var(--bg); }
+.md blockquote { padding-left: 1rem; border-left: 3px solid var(--accent); color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
+.notice { background: var(--surface-2); padding: 1rem 1.25rem; margin: 1rem 0; }
+
+@media (max-width: 760px) {
+  .stages { grid-template-columns: 1fr; }
+  .review dl { grid-template-columns: 1fr; }
+  .nav-row .btn { flex: 1; }
+}
+
+/* app 畫面的標題比首頁小 */
+.app h1, .app .head { font-size: clamp(1.375rem, 1.15rem + 0.8vw, 2rem); line-height: 1.3; }

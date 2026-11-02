@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>寫下你的處境｜第三條路</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/app.css">
+<script>document.documentElement.classList.add('js')</script>
+</head>
+<body class="app">
+<header class="bar">
+  <a class="wordmark" href="./">第三條路</a>
+  <p class="small" id="step-count" aria-live="polite"></p>
+</header>
+<div class="progress" id="progress" role="presentation"></div>
+
+<main class="app-main">
+  <h1 class="sr-only">寫下你的處境</h1>
+  <noscript><p>這一頁要開啟 JavaScript 才能填寫。</p></noscript>
+  <div id="steps"></div>
+  <p class="small submit-status" id="submit-status" aria-live="polite"></p>
+</main>
+
+<template id="consent-text">
+  <div class="consent">
+    <p>謝謝你幫忙試用！這是還在開發的決策分析報告，想請你用一件真的卡住你的事來試，看看報告準不準、有沒有用。</p>
+    <h3>我們怎麼用你的資料</h3>
+    <ul>
+      <li>你填的內容和附件，只用來替你做這一份報告，和改進報告的寫法。</li>
+      <li>看得到的只有負責試跑的人。報告由 AI（Claude）協助產生，對話不拿去訓練模型。</li>
+      <li>填了公司名稱或官網，我們會上網查這家公司的公開資訊（官網、新聞、公開報告）。只拿公司名稱去查，不會把你寫的處境放上網。</li>
+      <li>報告裡不寫你的全名，提到的其他人只寫關係或職稱。</li>
+      <li>試跑結束後 30 天內，表單答案、附件和報告的工作檔都會刪掉，只留下不帶個人資料的回饋分數。想提早刪，隨時說。</li>
+    </ul>
+    <h3>請你注意</h3>
+    <ul>
+      <li>附件上傳前，先遮掉身分證字號、銀行帳號、別人的全名。</li>
+      <li>報告是幫你把選項想清楚的參考，不是投資、法律、醫療或稅務的專業意見。</li>
+      <li>有些內容超出報告能處理的範圍時，我們會告訴你這次沒辦法製作。</li>
+    </ul>
+  </div>
+</template>
+
+
+<script src="assets/config.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/form.js"></script>
+</body>
+</html>

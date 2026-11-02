@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>你的進度｜第三條路</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/sim.css">
+</head>
+<body class="app">
+<header class="bar">
+  <a class="wordmark" href="./">第三條路</a>
+</header>
+<main class="app-main">
+  <h1 class="head">你的進度</h1>
+  <ol class="stages" id="stages" aria-label="進度"></ol>
+  <div class="field mylink">
+    <label for="mylink">你的專屬連結（請收好，之後都從這裡看）</label>
+    <div class="actions" style="margin-top:0"><input type="text" id="mylink" readonly style="flex:1;min-width:14rem"><button class="btn quiet" id="copy" type="button">複製連結</button></div>
+  </div>
+  <div id="case" style="margin-top:2.5rem"></div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/pixel.js"></script>
+<script src="assets/sim.js"></script>
+<script src="assets/case.js"></script>
+</body>
+</html>
