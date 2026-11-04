@@ -18,7 +18,17 @@ const CFG = {
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const clamp = (v, lo = 3, hi = 100) => Math.max(lo, Math.min(hi, v));
 const pick = (arr, rnd) => arr[Math.floor(rnd() * arr.length)];
-const CITY = { TWN: '台灣', SGP: '新加坡' };
+// 地名：200 國資料的中文名（countries.csv 的 name_zh），找不到才用代碼
+const CITY = (() => {
+  const p = require('path').resolve(__dirname, '..', '..', '1in8b-research', 'country-data', 'data', 'countries.csv');
+  const out = { TWN: '台灣', SGP: '新加坡' };
+  try {
+    const lines = fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '').split('\n');
+    const head = lines[0].split(','), iI = head.indexOf('iso3'), iZ = head.indexOf('name_zh');
+    lines.slice(1).forEach(l => { const c = l.split(','); if (c[iI] && c[iZ] && !out[c[iI]]) out[c[iI]] = c[iZ]; });
+  } catch (e) { /* 沒有資料檔就只有台灣、新加坡 */ }
+  return out;
+})();
 function phaseAt(opt, t) { return opt.phases.find(p => t >= p.from && t < p.to) || opt.phases[opt.phases.length - 1]; }
 
 // 一段人生：角色用代號記（cw3、boss2、fr1…），挑出要給人看的那幾段才換成名字
@@ -49,7 +59,7 @@ function runOnce(D, P, opt, seed) {
   let sameCompany = true;  // 被裁員換過公司，就不再是當初那家公司（調回、合約裡的升遷都跟著失效）
   // 選項自己有寫升遷的事時，那段期間引擎不另外隨機升遷，免得「剛升處長，隔年又說升處長的保證沒了」
   const promoWindowEnd = Math.max(-1, ...(opt.events || []).filter(e => e.effect && e.effect.title).map(e => e.at[1]));
-  const styleOf = cc => (cc === 'SGP' ? 'SG' : 'TW');
+  const styleOf = NM.styleOf;
   const newJob = cc => { jobCountry = cc; boss = newRole('boss', styleOf(cc)); cws = [0, 1, 2].map(() => newRole('cw', styleOf(cc))); };
   newJob(phaseAt(opt, 0).country);
   for (let t = 0; t < 75; t++) {

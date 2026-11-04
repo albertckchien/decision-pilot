@@ -47,6 +47,10 @@
     var x = (t * 0.15) % (W + 40) - 40;
     [[x, 10], [x + 70, 18], [x + 130, 8]].forEach(function (p) { var cx = ((p[0] % (W + 40)) + W + 40) % (W + 40) - 20; rect(ctx, '#ffffff', cx, p[1], 14, 3); rect(ctx, '#ffffff', cx + 3, p[1] - 2, 8, 2); });
   }
+  function city(ctx) {
+    var bs = [[2, 28], [14, 36], [26, 24], [38, 40], [50, 30], [62, 22], [74, 34], [86, 44], [98, 26], [110, 38], [122, 30], [134, 42], [146, 26]];
+    bs.forEach(function (b, i) { rect(ctx, i % 3 === 0 ? '#8a8fa8' : i % 3 === 1 ? '#7c829e' : '#959ab2', b[0], 62 - b[1], 11, b[1]); for (var y = 62 - b[1] + 3; y < 60; y += 5) { rect(ctx, '#d9dcee', b[0] + 2, y, 2, 2); rect(ctx, '#d9dcee', b[0] + 7, y, 2, 2); } });
+  }
   function taipei(ctx) {
     var bs = [[4, 30], [16, 24], [26, 34], [40, 20], [52, 28], [96, 26], [108, 36], [120, 22], [134, 30], [146, 24]];
     bs.forEach(function (b, i) { rect(ctx, i % 2 ? '#8892b0' : '#7a84a6', b[0], 62 - b[1], 10, b[1]); for (var y = 62 - b[1] + 3; y < 60; y += 5) { rect(ctx, '#c9d3f0', b[0] + 2, y, 2, 2); rect(ctx, '#c9d3f0', b[0] + 6, y, 2, 2); } });
@@ -76,10 +80,10 @@
     var state = { city: '台灣', age: 40, retired: false, spouse: true, spouseFemale: true, kids: [], female: false }, t = 0, raf = null;
     function draw() {
       t++;
-      var old = state.age >= 63, kind = old ? 'park' : state.city === '新加坡' ? 'sg' : 'tw';
+      var old = state.age >= 63, kind = old ? 'park' : state.city === '新加坡' ? 'sg' : state.city === '台灣' ? 'tw' : 'gen';
       if (kind === 'sg') sky(ctx, '#bfe3dc', '#d8efe9'); else if (kind === 'park') sky(ctx, '#f2dfc2', '#f7ead6'); else sky(ctx, '#b9c9ee', '#d3ddf6');
       clouds(ctx, t);
-      if (kind === 'tw') taipei(ctx); else if (kind === 'sg') singapore(ctx); else park(ctx);
+      if (kind === 'tw') taipei(ctx); else if (kind === 'sg') singapore(ctx); else if (kind === 'gen') city(ctx); else park(ctx);
       ground(ctx, kind === 'park' ? 'park' : 'city');
       var frame = Math.floor(t / 20), x = 62;
       person(ctx, x, 46, state.age, state.female, '#1a4be0', frame);

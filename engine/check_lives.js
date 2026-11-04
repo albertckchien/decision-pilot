@@ -4,7 +4,9 @@ const { execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path');
 const N = +(process.argv[2] || 5);
 const issues = {}, wedAges = new Set(), worstAll = [], globalWorst = [];
-const PAR = JSON.parse(fs.readFileSync(path.join(__dirname, 'example_派駐新加坡.json'), 'utf8'));
+// 第 2 個參數可以指定別的參數檔（試跑的案件），沒給就用範例
+const PARF = path.resolve(process.argv[3] || path.join(__dirname, 'example_派駐新加坡.json'));
+const PAR = JSON.parse(fs.readFileSync(PARF, 'utf8'));
 const ladder = PAR.titles;
 // 能讓職稱往上的只有：引擎的升遷（「升上…」開頭）和參數裡帶 title 的好事
 const promoTexts = PAR.options.flatMap(o => o.events.filter(e => e.effect && e.effect.title && e.kind === 'big').map(e => e.text));
@@ -15,8 +17,10 @@ const tmp = path.join(__dirname, '_check_tmp.json');
 const note = (k, s) => { (issues[k] = issues[k] || []).push(s); };
 
 const femaleP = path.join(__dirname, '_check_female.json');
-fs.writeFileSync(femaleP, JSON.stringify(Object.assign({}, PAR, { gender: 'F' })));
-for (const [variant, pf] of [['男', path.join(__dirname, 'example_派駐新加坡.json')], ['女', femaleP]])
+const famF = Object.assign({}, PAR.family); delete famF.spouse_gender;
+fs.writeFileSync(femaleP, JSON.stringify(Object.assign({}, PAR, { gender: PAR.gender === 'F' ? 'M' : 'F', family: famF })));
+// 原本的參數跑一次，再把主角換成另一個性別跑一次
+for (const [variant, pf] of [[PAR.gender === 'F' ? '女' : '男', PARF], [PAR.gender === 'F' ? '男' : '女', femaleP]])
 for (let seed = 1; seed <= N; seed++) {
   execFileSync('node', [path.join(__dirname, 'simulate.js'), pf, tmp, '--seed', String(seed), '--runs', '200']);
   const d = JSON.parse(fs.readFileSync(tmp, 'utf8'));

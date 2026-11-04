@@ -182,5 +182,10 @@
     "副總經理"
   ],
   "title_index": 2,
-  "gender": "M"
+  "gender": "M",
+  "sensitive": false,
+  "has_actions": true,
+  "assumptions": [
+    "示意情境：所有數字都是假設的（要不要接新加坡外派）"
+  ]
 }
