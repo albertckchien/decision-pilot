@@ -46,10 +46,10 @@
 .sim-map{display:grid;grid-template-columns:repeat(25,1fr);gap:2px;margin-top:.8rem}
 .sim-map span{aspect-ratio:1;background:var(--surface);transition:background-color .4s}
 .sim-maplab{font-size:.8rem;color:var(--muted);margin-top:.3rem;display:flex;justify-content:space-between;gap:.5rem}
-.sim-card{position:absolute;inset:0;background:var(--ink);color:#fff;padding:1.3rem;display:flex;flex-direction:column;gap:.7rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .6s,transform .6s cubic-bezier(.22,1,.36,1);overflow:auto}
+.sim-card{position:absolute;inset:0;z-index:5;background:var(--ink);color:#fff;padding:1.3rem;display:flex;flex-direction:column;gap:.7rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .6s,transform .6s cubic-bezier(.22,1,.36,1);overflow:auto}
 .sim-card.show{opacity:1;pointer-events:auto;transform:none}
 .sim-card h4{font-family:var(--font-display);font-size:1.4rem;margin:0}
-.sim-card .row{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem}
+.sim-card .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr));gap:.5rem}
 .sim-card .row div{background:#222;padding:.6rem}
 .sim-card .row b{display:block;font-family:var(--font-display);font-size:1.25rem}
 .sim-card .row span{font-size:.8rem;color:#bbb}

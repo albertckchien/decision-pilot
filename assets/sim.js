@@ -10,7 +10,7 @@ window.renderSim = function (root, data) {
     '<div class="sim-opts" role="group" aria-label="選一個選項">' + data.options.map(function (o, i) { return '<button class="sim-opt" data-i="' + i + '" aria-pressed="' + (i === 0) + '"><strong>' + esc(o.id + '　' + o.name) + '</strong><span>' + esc(o.sub || '') + '</span></button>'; }).join('') + '</div>' +
     '<div class="sim-ctrl"><button class="go sim-play">播放</button><button class="sim-spd">速度 1×</button><button class="sim-skip">跳到結局</button><span class="sp"></span><button class="sim-only-m" data-one="good" aria-pressed="true">運氣好</button><button class="sim-only-m" data-one="bad" aria-pressed="false">運氣差</button></div>' +
     '<div class="sim-stages" data-one="good"><section class="sim-stage good" aria-label="運氣好的那一段"></section><section class="sim-stage bad" aria-label="運氣差的那一段"></section></div>' +
-    '<p class="sim-note">每條路跑了 ' + data.runs + ' 次，挑出排在前兩成和後兩成附近的兩段。人生選擇一律保守，好壞只來自外在的運氣；數字是示意，不是預測。</p>');
+    '<p class="sim-note">每條路跑了 ' + data.runs + ' 次，挑出排在前兩成和後兩成附近的兩段。人生選擇一律保守，好壞只來自外在的運氣。金額都換算成今天的錢；數字是示意，不是預測。</p>');
   var Q = function (s) { return root.querySelector(s); };
 
   function profileHtml(y) {
@@ -75,7 +75,7 @@ window.renderSim = function (root, data) {
   }
   function card(st, L, k) {
     var c = L.card, el = st.querySelector('.sim-card');
-    el.innerHTML = '<h4>' + (k === 'good' ? '運氣好的這一生' : '運氣差的這一生') + '</h4><div class="row"><div><b>' + c.end + ' 歲</b><span>活到</span></div><div><b>' + c.peak + ' 萬</b><span>存款最高的時候（示意）</span></div></div><ul>' + c.big.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '<li>最順的一年：' + esc(c.best) + '</li><li>最難的一年：' + esc(c.worst) + '</li></ul><button class="again">再看一次</button>';
+    el.innerHTML = '<h4>' + (k === 'good' ? '運氣好的這一生' : '運氣差的這一生') + '</h4><div class="row"><div><b>' + c.end + ' 歲</b><span>活到</span></div><div><b>' + c.peak + ' 萬</b><span>存款最高的時候</span></div><div><b>' + c.left + ' 萬</b><span>走的時候留下的</span></div></div><ul>' + c.big.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '<li>最順的一年：' + esc(c.best) + '</li><li>最難的一年：' + esc(c.worst) + '</li></ul><button class="again">再看一次</button>';
     el.classList.add('show');
     el.querySelector('.again').onclick = reset;
   }

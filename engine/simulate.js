@@ -21,7 +21,7 @@ function runOnce(D, P, opt, seed) {
   const roles = {}; let nid = 0;
   const newRole = (kind, style) => { const id = kind + (++nid); roles[id] = { kind, style, g: rnd() < 0.5 ? 'M' : 'F' }; return id; };
   let age = P.age, m = P.savings, h = clamp(88 - Math.max(0, age - 30) * 0.4), f = 70, c = 50;
-  let careerMult = 1, priceLvl = 1, extraSpend = 0, extraSpendYears = 0, retired = false;
+  let careerMult = 1, extraSpend = 0, extraSpendYears = 0, retired = false;
   let boss = null, cws = [], jobCountry = null;
   const friends = [newRole('fr', 'TW'), newRole('fr', 'TW'), newRole('fr', 'TW')];
   const kids = (fam.kids || []).map((a, i) => ({ id: 'kid' + i, age0: a, ks: null, gk: null }));
@@ -76,15 +76,17 @@ function runOnce(D, P, opt, seed) {
       c = clamp(c + (age < 55 ? 1 : -0.5));
     } else income = (P.pension_monthly || 2.5) * 12;
     const spouseIncome = retired || !spouse || !spouse.alive ? 0 : (ph.spouse_income || 0);
-    priceLvl *= 1 + cty.infl / 100;
     const kidsUni = kids.filter(k => k.age0 + t >= 18 && k.age0 + t <= 21).length * 25;
-    let spend = P.monthly_spend * 12 * priceLvl * (1 + Math.max(0, Math.min(age, 60) - P.age) * 0.01) + extraSpend * 12 + kidsUni;
+    // 金額一律用今天的錢算（實質）：收入、年金、開銷都不乘物價，存款的報酬也用扣掉通膨後的
+    let spend = P.monthly_spend * 12 * (1 + Math.max(0, Math.min(age, 60) - P.age) * 0.01) + extraSpend * 12 + kidsUni;
     if (extraSpendYears > 0 && --extraSpendYears === 0) extraSpend = 0;
-    if (retired) spend *= age >= 80 ? 0.7 : age >= 72 ? 0.85 : 1;  // 老了花得少
+    if (retired) spend *= age >= 80 ? 0.65 : age >= 72 ? 0.75 : 0.85;  // 退休後花得少，越老越少
     const net = (income + spouseIncome) * (retired ? 1 : 0.85);
     // 存款見底就省著過：開銷壓到收入以內，不會一路欠到幾千萬
     if (m <= 0) { spend = Math.min(spend, net); if (!done.has('broke')) { add(T.life.broke, 'hit', { h: -2, f: -2 }); done.add('broke'); } }
-    m += net - spend + Math.max(0, m) * (0.015 + (rnd() - 0.5) * 0.04);
+    // 實質報酬約 2%，上下 2%；通膨超過 6% 的年頭存款被吃掉，貨幣危機那年再吃一成
+    const realRet = 0.02 + (rnd() - 0.5) * 0.04 - Math.max(0, cty.infl - 6) / 100 - (cty.cur ? 0.1 : 0);
+    m += net - spend + Math.max(0, m) * realRet;
     // 家人：里程碑、照顧、離世（生命表）
     kids.forEach(k => {
       const a = k.age0 + t;
@@ -171,7 +173,7 @@ function summarize(run) {
   const end = years[years.length - 1].age;
   return {
     end, years: ys, map: ys.map(y => y.mood),
-    card: { end, peak: Math.max(...years.map(y => y.stats.m)), big: allEv.filter(e => e[2] === 'big').slice(0, 5).map(e => e[0] + ' 歲：' + e[1]),
+    card: { end, peak: Math.max(...years.map(y => y.stats.m)), left: years[years.length - 1].stats.m, big: allEv.filter(e => e[2] === 'big').slice(0, 5).map(e => e[0] + ' 歲：' + e[1]),
       best: best.age + ' 歲：' + (best.events.find(e => e[1] === 'big') || best.events[0])[0],
       worst: worst.age + ' 歲：' + (worst.events.find(e => e[1] === 'hit' || e[1] === 'end') || worst.events[0])[0] }
   };
