@@ -19,6 +19,7 @@ window.renderSim = function (root, data) {
     '<div class="sim-opts" role="group" aria-label="選一個選項">' + data.options.map(function (o, i) { return '<button class="sim-opt" data-i="' + i + '" aria-pressed="' + (i === 0) + '"><strong>' + esc(o.id + '　' + o.name) + '</strong><span>' + esc(o.sub || '') + '</span></button>'; }).join('') + '</div>' +
     '<div class="sim-ctrl"><button class="go sim-play">播放</button><button class="sim-spd">速度 1×</button><button class="sim-skip">跳到結局</button><span class="sp"></span><button class="sim-only-m" data-one="good" aria-pressed="true">運氣好</button><button class="sim-only-m" data-one="bad" aria-pressed="false">運氣差</button></div>' +
     '<div class="sim-stages" data-one="good"><section class="sim-stage good" aria-label="運氣好的那一段"></section><section class="sim-stage bad" aria-label="運氣差的那一段"></section></div>' +
+    '<section class="sim-words" hidden aria-label="看完之後"><h3>看完這兩段人生</h3>' + (data.quotes || []).map(function (q) { return '<p>' + esc(q.text) + '</p>'; }).join('') + '</section>' +
     '<p class="sim-note">金額都換算成今天的錢。算進去的：薪水、另一半的收入、生活費、小孩念大學、照顧爸媽、退休年金、存款的報酬；沒算進去的：房貸、保險、外派的津貼和額外花費。數字是示意，判斷請看報告前面的分析。</p>');
   var Q = function (s) { return root.querySelector(s); };
 
@@ -44,11 +45,19 @@ window.renderSim = function (root, data) {
     // 順序（嚴審 F9）：場景、今年的事、數值，個人資訊收在可以展開的區塊，手機上預設收起
     st.innerHTML = '<h3><span class="' + (k === 'good' ? 'sim-good-t' : '') + '">' + (k === 'good' ? '運氣好的那一段' : '運氣差的那一段') + '</span><small>' + rank + '</small></h3>' +
       '<div class="sim-scene"><canvas class="sim-px" aria-hidden="true"></canvas><span class="sim-place">' + esc(y0.city) + '</span><div class="sim-age">' + y0.age + '<small>' + y0.year + '</small></div><div class="sim-pop"></div></div>' +
-      '<ol class="sim-feed" aria-live="off"></ol>' +
+      '<div class="sim-feedwrap"><ol class="sim-feed" aria-live="off" tabindex="0" aria-label="每一年發生的事，可以往下捲回去看"></ol><button class="sim-latest" hidden>回到最新</button></div>' +
       '<div class="sim-bars"><span>存款</span><div class="sim-bar money"><i></i></div><b class="v-m"></b><span>健康</span><div class="sim-bar"><i></i></div><b class="v-h"></b><span>家庭</span><div class="sim-bar"><i></i></div><b class="v-f"></b><span>事業</span><div class="sim-bar"><i></i></div><b class="v-c"></b></div>' +
       '<details class="sim-pd"' + (mobile ? '' : ' open') + '><summary>你和身邊的人</summary><div class="sim-profile">' + profileHtml(y0) + '</div></details>' +
-      '<div class="sim-map">' + L.map.map(function () { return '<span></span>'; }).join('') + '</div><div class="sim-maplab"><span>' + y0.age + ' 歲</span><span>人生地圖：一格一年，看那年好事和壞事的分量。藍色是好事比較重，越深越好；灰黑色是壞事比較重，越黑越難；淺灰是平常、或好壞剛好抵銷的一年</span><span>' + L.end + ' 歲</span></div><div class="sim-card"></div>';
+      '<div class="sim-map">' + L.map.map(function (v, i) { return '<span role="button" tabindex="-1" data-i="' + i + '" aria-label="' + L.years[i].age + ' 歲"></span>'; }).join('') + '</div><div class="sim-maplab"><span>' + y0.age + ' 歲</span><span>人生地圖：一格一年，點一格可以看那年的事。看那年好事和壞事的分量：藍色是好事比較重，越深越好；灰黑色是壞事比較重，越黑越難；淺灰是平常、或好壞剛好抵銷的一年</span><span>' + L.end + ' 歲</span></div><div class="sim-card"></div>';
     st._peak = Math.max(1, L.card.peak);
+    // 回看（用戶 2026-11-05：快進時想翻某個歲數前後的事）：清單保留每一年，往下捲就是更早的；點人生地圖的一格跳到那年
+    var f = st.querySelector('.sim-feed'), latest = st.querySelector('.sim-latest');
+    f.addEventListener('scroll', function () { latest.hidden = f.scrollTop < 8; });
+    latest.onclick = function () { f.scrollTop = 0; };
+    st.querySelectorAll('.sim-map span').forEach(function (c) {
+      var go = function () { var g = f.querySelector('[data-age="' + L.years[+c.dataset.i].age + '"]'); if (!g) return; f.scrollTop = g.offsetTop - f.offsetTop; g.classList.remove('flash'); void g.offsetWidth; g.classList.add('flash'); setTimeout(function () { g.classList.remove('flash'); }, 1500); };
+      c.onclick = go; c.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+    });
     scenes[k] = window.PixelScene ? window.PixelScene(st.querySelector('.sim-px')) : null;
     setScene(k, y0);
     bars(st, y0.stats);
@@ -67,10 +76,18 @@ window.renderSim = function (root, data) {
   }
   function paint(st, L, upto) {
     var cells = st.querySelectorAll('.sim-map span');
-    for (var i = 0; i <= upto && i < L.map.length; i++) { var v = L.map[i]; cells[i].style.background = v >= 3 ? '#1a4be0' : v > 0 ? '#7f9cf0' : v === 0 ? '#d4d4d4' : v > -3 ? '#666' : '#111'; cells[i].title = L.years[i].age + ' 歲'; }
+    for (var i = 0; i <= upto && i < L.map.length; i++) { var v = L.map[i]; cells[i].style.background = v >= 3 ? '#1a4be0' : v > 0 ? '#7f9cf0' : v === 0 ? '#d4d4d4' : v > -3 ? '#666' : '#111'; cells[i].title = L.years[i].age + ' 歲，點一下看那年的事'; cells[i].tabIndex = 0; cells[i].classList.add('on'); }
   }
   function pop(st, text, kind) { var p = st.querySelector('.sim-pop'); p.className = 'sim-pop' + (kind ? ' ' + kind : ''); p.textContent = text; void p.offsetWidth; p.classList.add('show'); }
-  function feed(st, html, cls) { var f = st.querySelector('.sim-feed'), li = document.createElement('li'); li.className = cls || ''; li.innerHTML = html; f.prepend(li); while (f.children.length > 14) f.lastChild.remove(); }
+  // 使用者往下捲在看舊的年頭時，新的事加在上面不要把畫面推走
+  function keep(f, fn) { var top = f.scrollTop, h = f.scrollHeight; fn(); if (top > 8) f.scrollTop = top + (f.scrollHeight - h); var b = f.parentNode.querySelector('.sim-latest'); if (b) b.hidden = f.scrollTop < 8; }
+  function yearGroup(st, y) {
+    var f = st.querySelector('.sim-feed'), g = document.createElement('li');
+    g.className = 'grp'; g.dataset.age = y.age; g.innerHTML = '<h5>' + y.age + ' 歲・' + y.year + '・' + esc(y.city) + '</h5><ol></ol>';
+    keep(f, function () { f.prepend(g); });
+    return g.querySelector('ol');
+  }
+  function feed(st, ol, text, cls) { var f = st.querySelector('.sim-feed'), li = document.createElement('li'); li.className = cls || ''; li.textContent = text; keep(f, function () { ol.appendChild(li); }); }
   function apply(k, i, quick) {
     var L = data.options[cur][k], st = Q('.sim-stage.' + k), n = L.years.length;
     if (i < n) {
@@ -80,7 +97,8 @@ window.renderSim = function (root, data) {
       setScene(k, y);
       st.querySelector('.sim-profile').innerHTML = profileHtml(y);
       var gap = quick ? 0 : Math.min(160, 1100 / speed / Math.max(1, y.events.length));
-      y.events.forEach(function (e, j) { var go = function () { feed(st, '<span class="y">' + y.age + ' 歲</span><span>' + esc(e[0]) + '</span>', e[1]); }; if (gap) setTimeout(go, j * gap); else go(); });
+      var ol = yearGroup(st, y);
+      y.events.forEach(function (e, j) { var go = function () { feed(st, ol, e[0], e[1]); }; if (gap) setTimeout(go, j * gap); else go(); });
       var main = y.events.filter(function (e) { return e[1] === 'end'; })[0] || y.events.slice().sort(function (a, b) { return Math.abs(b[2] || 0) - Math.abs(a[2] || 0); })[0];
       if (main && !quick) pop(st, main[0], main[1]); else if (quick) st.querySelector('.sim-pop').className = 'sim-pop';
       bars(st, y.stats); paint(st, L, i);
@@ -91,11 +109,14 @@ window.renderSim = function (root, data) {
     el.innerHTML = '<h4>' + (k === 'good' ? '運氣好的這一生' : '運氣差的這一生') + '</h4><div class="row"><div><b>' + c.end + ' 歲</b><span>活到</span></div><div><b>' + money(c.peak) + '</b><span>存款最多的時候</span></div><div><b>' + money(c.left) + '</b><span>走的時候留下的</span></div></div>' +
       (D ? '<p class="dist">這條路跑的 ' + data.runs + ' 次裡：一半的人活到 ' + D.medEnd + ' 歲以上，' + D.over80 + '% 活過 80 歲；留下的錢中位數約 ' + money(D.medLeft) + '。</p>' : '') +
       '<ul>' + c.big.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '<li>最順的一年：' + esc(c.best) + '</li><li>最難的一年：' + esc(c.worst) + '</li></ul>' +
-      '<p class="dist">這是示意，不是預測，也不是理財建議。這兩段讓你感受這條路走下去的樣子，要怎麼選，請回到報告前面的比較和建議。</p><button class="again">再看一次</button>';
+      '<p class="dist">這是示意，不是預測，也不是理財建議。這兩段讓你感受這條路走下去的樣子，要怎麼選，請回到報告前面的比較和建議。</p><div class="btns"><button class="again">再看一次</button><button class="review">回頭看每一年</button></div>';
     el.classList.add('show');
+    // 兩段都播完才出現那幾句話
+    if (root.querySelectorAll('.sim-card.show').length === 2 && (data.quotes || []).length) { var w = Q('.sim-words'); w.hidden = false; w.classList.remove('in'); void w.offsetWidth; w.classList.add('in'); }
+    el.querySelector('.review').onclick = function () { el.classList.remove('show'); st.querySelector('.sim-feed').focus(); };
     el.querySelector('.again').onclick = function () { reset(); play(); };
   }
-  function reset() { stop(); step = 0; build('good'); build('bad'); maxStep = Math.max(data.options[cur].good.years.length, data.options[cur].bad.years.length) + 1; }
+  function reset() { stop(); step = 0; Q('.sim-words').hidden = true; build('good'); build('bad'); maxStep = Math.max(data.options[cur].good.years.length, data.options[cur].bad.years.length) + 1; }
   function tick(quick) { apply('good', step, quick); apply('bad', step, quick); step++; if (step >= maxStep) stop(); }
   function stop() { clearInterval(timer); timer = null; Q('.sim-play').textContent = step > 0 && step < maxStep ? '繼續' : '播放'; }
   // 按下去當下就推進第一年，不用等 2 秒（嚴審 F8）

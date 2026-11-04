@@ -87,3 +87,26 @@
 .sim-card .dist{font-size:.85rem;color:#ccc;margin:0}
 @media(max-width:760px){.sim-feed{height:11rem}.sim-pop{font-size:.85rem}}
 @media(prefers-reduced-motion:reduce){.sim-pop.show{animation:none;opacity:1}}
+
+/* 回看（2026-11-05）：清單保留每一年，照年分組，可以捲 */
+.sim-feedwrap{position:relative}
+.sim-feed{overflow-y:auto;overscroll-behavior:contain;position:relative;scrollbar-width:thin}
+.sim-feed li.grp{display:block;background:none;padding:0;animation:none;font-size:.92rem}
+.sim-feed li.grp h5{position:sticky;top:0;z-index:1;margin:0;padding:.3rem .2rem;font-family:var(--font-text);font-size:.8rem;font-weight:500;color:var(--muted);background:var(--bg)}
+.sim-feed li.grp ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.sim-feed li.grp li{grid-template-columns:1fr}
+.sim-feed li.grp.flash h5{background:var(--accent);color:#fff;transition:background-color .2s}
+.sim-latest{position:absolute;right:.6rem;bottom:.6rem;border:0;background:var(--ink);color:#fff;padding:.4rem .8rem;font-size:.85rem;cursor:pointer}
+.sim-map span.on{cursor:pointer}
+.sim-map span.on:hover,.sim-map span.on:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+
+/* 播完之後的一句話（quotes/句子規格.md）：兩段都播完才出現 */
+.sim-words{margin-top:1.2rem;padding:1.6rem 1.4rem;background:var(--bg);border-left:4px solid var(--accent)}
+.sim-words h3{font-size:.85rem;font-family:var(--font-text);font-weight:500;color:var(--muted);margin:0 0 .8rem}
+.sim-words p{font-family:var(--font-display);font-size:1.25rem;line-height:1.6;margin:.5rem 0}
+.sim-words.in p{animation:sim-in .9s cubic-bezier(.22,1,.36,1) both}
+.sim-words.in p:nth-of-type(2){animation-delay:.6s}.sim-words.in p:nth-of-type(3){animation-delay:1.2s}
+@media(prefers-reduced-motion:reduce){.sim-words.in p{animation:none}}
+.sim-card .btns{margin-top:auto;display:flex;gap:.5rem;flex-wrap:wrap}
+.sim-card .btns .again{margin-top:0}
+.sim-card .review{background:transparent;color:#fff;border:1px solid #fff;padding:.5rem 1rem;cursor:pointer}

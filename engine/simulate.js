@@ -269,6 +269,16 @@ function main() {
     delete o.runs;
   });
   out.quote_kind = Math.max(...medians) - Math.min(...medians) < 0.6 ? 'A1' : 'A2';
+  // 播完之後的三句話（quotes/句子規格.md 第一節）：A1 或 A2 一句、B 或 C 一句、D 或 E 一句。
+  // 參數 sensitive（重病、喪親、離婚、債務、失業）時不出 A1、E；危機情況根本不會跑到這裡（第 0 級不做模擬）。
+  const Qd = require('path').join(__dirname, 'quotes');
+  const lines = k => fs.readFileSync(require('path').join(Qd, k + '.md'), 'utf8').split('\n').map(l => l.replace('\r', '').split('｜'))
+    .filter(c => /^[A-E]\d?-\d+$/.test(c[0]) && c[4] !== '不適合脆弱的人').map(c => ({ id: c[0], text: c[1] }));
+  const qr = rng(seed0 * 31 + 7), qpick = k => { const L = lines(k); return Object.assign({ kind: k }, L[Math.floor(qr() * L.length)]); };
+  const kA = P.sensitive && out.quote_kind === 'A1' ? 'C' : out.quote_kind;
+  const kB = kA === 'C' ? 'B' : (qr() < 0.5 ? 'B' : 'C');
+  const kD = P.sensitive ? 'D' : (P.has_actions === false || out.quote_kind === 'A1') ? 'E' : 'D';
+  out.quotes = [qpick(kA), qpick(kB), qpick(kD)];
   fs.writeFileSync(outf, JSON.stringify(out));
   console.log('寫好', outf, out.options.map(o => o.id + ' 好 ' + o.good.end + ' 歲／壞 ' + o.bad.end + ' 歲').join('；'), out.quote_kind);
 }
