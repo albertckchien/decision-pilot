@@ -6,6 +6,15 @@ const W = require('./world.js');
 const T = require('./texts.js');
 const NM = require('./names.js');
 
+// 可以調的假設都放這裡，不散在流程裡（嚴審 2026-11-05）
+const CFG = {
+  careerDeclineAfter55: 0.5,   // 55 歲後事業數值每年少多少
+  careYears: 6, careCostYear: 30,  // 照顧爸媽：每人最多幾年、一年多少萬
+  wedNever: 0.15, wedFrom: 27, wedSpan: 9,  // 小孩一成五不結婚，27～35 歲結婚
+  noBaby: 0.2, babyAfterWed: [1, 4],        // 婚後兩成不生，1～4 年生
+  realReturn: 0.02, realReturnSpread: 0.04  // 存款的實質報酬和上下幅度
+};
+
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const clamp = (v, lo = 3, hi = 100) => Math.max(lo, Math.min(hi, v));
 const pick = (arr, rnd) => arr[Math.floor(rnd() * arr.length)];
@@ -20,14 +29,26 @@ function runOnce(D, P, opt, seed) {
   const world = { type: 'normal' }, fam = P.family || {};
   const roles = {}; let nid = 0;
   const newRole = (kind, style) => { const id = kind + (++nid); roles[id] = { kind, style, g: rnd() < 0.5 ? 'M' : 'F' }; return id; };
+  // 性別只定一次（嚴審 2026-11-05）：你、另一半、爸媽照參數，壽命、稱謂、畫面都讀它
+  const sexMe = P.gender || 'M', sexSp = fam.spouse_gender || (sexMe === 'M' ? 'F' : 'M');
   let age = P.age, m = P.savings, h = clamp(88 - Math.max(0, age - 30) * 0.4), f = 70, c = 50;
-  let careerMult = 1, extraSpend = 0, extraSpendYears = 0, retired = false;
+  let careerMult = 1, retired = false;
+  const ladder = P.titles || ['專員', '主任', '經理', '處長', '協理', '副總'];
+  let tIdx = Math.min(ladder.length - 1, P.title_index ?? 2);
   let boss = null, cws = [], jobCountry = null;
   const friends = [newRole('fr', 'TW'), newRole('fr', 'TW'), newRole('fr', 'TW')];
-  const kids = (fam.kids || []).map((a, i) => ({ id: 'kid' + i, age0: a, ks: null, gk: null }));
-  const parents = fam.parents_age ? [{ id: 'father', age: fam.parents_age + 2, alive: true }, { id: 'mother', age: fam.parents_age, alive: true }] : [];
+  // 小孩什麼時候結婚、生小孩，每段人生各抽一次（假設：27～35 歲結婚，一成五不結婚；婚後 1～4 年生，兩成不生）
+  const kids = (fam.kids || []).map((a, i) => {
+    const wed = rnd() < CFG.wedNever ? null : CFG.wedFrom + Math.floor(rnd() * CFG.wedSpan);
+    const [b0, b1] = CFG.babyAfterWed;
+    return { id: 'kid' + i, sex: (P.__kidSex || [])[i], age0: a, ks: null, gk: null, wed, baby: wed && rnd() >= CFG.noBaby ? wed + b0 + Math.floor(rnd() * (b1 - b0 + 1)) : null };
+  });
+  const parents = fam.parents_age ? [{ id: 'father', sex: 'M', age: fam.parents_age + 2, alive: true, careYears: 0 }, { id: 'mother', sex: 'F', age: fam.parents_age, alive: true, careYears: 0 }] : [];
   const spouse = fam.spouse === false ? null : { age: P.age + (fam.spouse_age_gap || -2), alive: true };
   const done = new Set(), years = [], recent = [];
+  let sameCompany = true;  // 被裁員換過公司，就不再是當初那家公司（調回、合約裡的升遷都跟著失效）
+  // 選項自己有寫升遷的事時，那段期間引擎不另外隨機升遷，免得「剛升處長，隔年又說升處長的保證沒了」
+  const promoWindowEnd = Math.max(-1, ...(opt.events || []).filter(e => e.effect && e.effect.title).map(e => e.at[1]));
   const styleOf = cc => (cc === 'SGP' ? 'SG' : 'TW');
   const newJob = cc => { jobCountry = cc; boss = newRole('boss', styleOf(cc)); cws = [0, 1, 2].map(() => newRole('cw', styleOf(cc))); };
   newJob(phaseAt(opt, 0).country);
@@ -36,86 +57,97 @@ function runOnce(D, P, opt, seed) {
     W.stepWorld(D, world, rnd);
     Object.values(countries).forEach(cc => W.stepCountry(D, cc, world, rnd));
     const cty = countries[ph.country], ev = [], usedT = new Set();
+    let promotedThisYear = false;
     const alivePa = () => parents.filter(p => p.alive);
     const fill = s => s.replace('{cw}', '{' + pick(cws.length ? cws : friends, rnd) + '}').replace('{boss}', '{' + (boss || pick(friends, rnd)) + '}')
-      .replace('{fr}', '{' + pick(friends, rnd) + '}').replace('{pa}', '{' + ((pick(alivePa(), rnd) || { id: 'mother' }).id) + '}');
-    const add = (text, kind = '', eff = {}) => {
-      ev.push([text, kind]);
+      .replace('{fr}', '{' + pick(friends, rnd) + '}').replace('{pa}', '{' + ((pick(alivePa(), rnd) || { id: 'mother' }).id) + '}').replace('{grand}', sexMe === 'F' ? '阿嬤' : '阿公');
+    const add = (text, kind = '', eff = {}, w) => {
+      ev.push([text, kind, w ?? (kind === 'big' ? 2 : kind === 'hit' ? -2 : 0)]);
       m += eff.m || 0; h = clamp(h + (eff.h || 0)); f = clamp(f + (eff.f || 0)); c = clamp(c + (eff.c || 0));
       if (eff.income) careerMult *= 1 + eff.income;
+      if (eff.title && ladder.indexOf(eff.title) > tIdx) { tIdx = ladder.indexOf(eff.title); promotedThisYear = true; }
     };
     const fromPool = (pool, kind = '', eff = {}) => {
       for (let i = 0; i < 6; i++) { const tpl = pick(pool, rnd); if (usedT.has(tpl) || recent.includes(tpl)) continue; usedT.add(tpl); add(fill(tpl), kind, eff); return true; }
       return false;
     };
-    if (!retired && ph.country !== jobCountry) { newJob(ph.country); add(fill(T.work.newJob)); }
+    // 換國家是同一家公司調派，不是換公司（嚴審 F2）
+    if (!retired && ph.country !== jobCountry) { newJob(ph.country); add(fill(!sameCompany ? T.work.newJob : ph.country === P.home ? T.work.transferHome(CITY[ph.country] || ph.country) : T.work.transfer(CITY[ph.country] || ph.country)), '', {}, 0); }
     // 國家大事
-    if (world.type === 'global') add(T.world.global, 'hit', { c: -3 });
+    if (world.type === 'global') add(T.world.global, 'hit', { c: -3 }, -1.5);
     cty.events.forEach(e => {
-      if (e === 'recession') add(retired ? T.world.recessionRetired(CITY[ph.country]) : T.world.recession(CITY[ph.country]), 'hit', retired ? { m: -5 } : { c: -2 });
-      if (e === 'currency') { add(T.world.currency(CITY[ph.country]), 'hit'); m *= 0.88; }
+      if (e === 'recession') add(retired ? T.world.recessionRetired(CITY[ph.country]) : T.world.recession(CITY[ph.country]), 'hit', retired ? { m: -5 } : { c: -2 }, -1);
+      if (e === 'currency') { add(T.world.currency(CITY[ph.country]), 'hit', {}, -2); m *= 0.88; }
       if (e === 'quake' && rnd() < 0.25) fromPool(T.world.quake);
-      if (e === 'quake_big') { if (rnd() < 0.06) add(T.world.quakeDamage, 'hit', { m: -15 }); else fromPool(T.world.quake); }
+      if (e === 'quake_big') { if (rnd() < 0.06) add(T.world.quakeDamage, 'hit', { m: -15 }, -2); else fromPool(T.world.quake); }
       if ((e === 'typhoon' || e === 'typhoon_big') && rnd() < 0.3) fromPool(T.world.typhoon);
     });
     // 選項自己的事（寫報告那一步照報告內容填機率和影響）
     (opt.events || []).forEach(e => {
       if (t < e.at[0] || t > e.at[1] || (e.once && done.has(e.text)) || (e.group && done.has('g:' + e.group))) return;
+      // 參數可以加條件：same_company 只有還在原公司才會發生；below_title 只有職稱還沒到那一級才會發生
+      if (e.same_company && !sameCompany) return;
+      if (e.below_title && tIdx >= ladder.indexOf(e.below_title)) return;
       if (rnd() < e.p) { add(fill(e.text), e.kind || '', e.effect || {}); done.add(e.text); if (e.group) done.add('g:' + e.group); }
     });
     // 工作和收入
-    if (!retired && age >= (P.retire_age || 63)) { retired = true; boss = null; cws = []; add(T.life.retire, 'big', { c: -10 }); }
+    if (!retired && age >= (P.retire_age || 63)) { retired = true; boss = null; cws = []; add(T.life.retire, 'big', { c: -10 }, 1); }
     let income = 0;
     if (!retired) {
-      if (rnd() < (cty.rec ? 0.06 : 0.015)) { add(cty.rec ? T.work.layoffRec : T.work.layoff, 'hit', { c: -8, h: -3 }); careerMult *= 0.92; income -= ph.income * careerMult * 0.4; newJob(ph.country); add(fill(T.work.newJob)); }
+      if (rnd() < (cty.rec ? 0.06 : 0.015)) { sameCompany = false; add(cty.rec ? T.work.layoffRec : T.work.layoff, 'hit', { c: -8, h: -3 }, -4); careerMult *= 0.92; income -= ph.income * careerMult * 0.4; newJob(ph.country); add(fill(T.work.newJob)); }
       const raise = 0.015 + Math.max(-0.03, cty.growth / 200) + (rnd() - 0.5) * 0.02 + (age < 50 ? 0.01 : 0);
       careerMult *= 1 + raise;
       if (raise > 0.045) fromPool(T.work.raise, '', { c: 2 });
+      // 升遷機率看事業數值，職位越高越難升
+      if (t > promoWindowEnd && !promotedThisYear && tIdx < ladder.length - 1 && rnd() < (Math.max(0, (c - 60) / 400) + (age < 55 ? 0.02 : 0.005)) / (tIdx + 1)) { tIdx++; add(T.work.promote(ladder[tIdx]), 'big', { c: 3, income: 0.1 }, 3); }
       if (rnd() < 0.08) cws[Math.floor(rnd() * cws.length)] = newRole('cw', styleOf(ph.country));
       income += ph.income * careerMult;
-      c = clamp(c + (age < 55 ? 1 : -0.5));
+      c = clamp(c + (age < 55 ? 1 : -CFG.careerDeclineAfter55));
     } else income = (P.pension_monthly || 2.5) * 12;
     const spouseIncome = retired || !spouse || !spouse.alive ? 0 : (ph.spouse_income || 0);
     const kidsUni = kids.filter(k => k.age0 + t >= 18 && k.age0 + t <= 21).length * 25;
+    // 照顧爸媽的開銷：每人最多 6 年，人走了就停（嚴審 F17）
+    const careCost = parents.reduce((s, p) => { if (p.alive && p.careYears > 0) { p.careYears--; return s + CFG.careCostYear; } return s; }, 0);
     // 金額一律用今天的錢算（實質）：收入、年金、開銷都不乘物價，存款的報酬也用扣掉通膨後的
-    let spend = P.monthly_spend * 12 * (1 + Math.max(0, Math.min(age, 60) - P.age) * 0.01) + extraSpend * 12 + kidsUni;
-    if (extraSpendYears > 0 && --extraSpendYears === 0) extraSpend = 0;
+    let spend = P.monthly_spend * 12 * (1 + Math.max(0, Math.min(age, 60) - P.age) * 0.01) + careCost + kidsUni;
     if (retired) spend *= age >= 80 ? 0.65 : age >= 72 ? 0.75 : 0.85;  // 退休後花得少，越老越少
     const net = (income + spouseIncome) * (retired ? 1 : 0.85);
     // 存款見底就省著過：開銷壓到收入以內，不會一路欠到幾千萬
-    if (m <= 0) { spend = Math.min(spend, net); if (!done.has('broke')) { add(T.life.broke, 'hit', { h: -2, f: -2 }); done.add('broke'); } }
+    if (m <= 0) { spend = Math.min(spend, net); if (!done.has('broke')) { add(T.life.broke, 'hit', { h: -2, f: -2 }, -3); done.add('broke'); } }
     // 實質報酬約 2%，上下 2%；通膨超過 6% 的年頭存款被吃掉，貨幣危機那年再吃一成
-    const realRet = 0.02 + (rnd() - 0.5) * 0.04 - Math.max(0, cty.infl - 6) / 100 - (cty.cur ? 0.1 : 0);
+    const realRet = CFG.realReturn + (rnd() - 0.5) * CFG.realReturnSpread - Math.max(0, cty.infl - 6) / 100 - (cty.cur ? 0.1 : 0);
     m += net - spend + Math.max(0, m) * realRet;
     // 家人：里程碑、照顧、離世（生命表）
     kids.forEach(k => {
       const a = k.age0 + t;
-      if (a >= 29 && !k.ks) k.ks = newRole('ks', 'TW');
-      if (a >= 31 && !k.gk) k.gk = newRole('gk', 'TW');
+      if (k.wed && a >= k.wed - 2 && !k.ks) { k.ks = newRole('ks', 'TW'); roles[k.ks].g = k.sex === 'F' ? 'M' : 'F'; }
+      if (k.baby && a >= k.baby && !k.gk) { k.gk = newRole('gk', 'TW'); roles[k.gk].kid = k; }
       const ms = T.family.milestone[a];
-      if (ms) add(ms[0].replace('{kid}', '{' + k.id + '}').replace('{ks}', '{' + (k.ks || 'fr1') + '}').replace('{gk}', '{' + (k.gk || 'fr1') + '}'), ms[1], { f: 3 });
+      if (ms) add(ms[0].replace('{kid}', '{' + k.id + '}'), ms[1], { f: 3 });
+      if (k.wed === a) add(T.family.wed.replace('{kid}', '{' + k.id + '}').replace('{ks}', '{' + k.ks + '}'), 'big', { f: 3 }, 3);
+      if (k.baby === a) add(T.family.baby.replace('{kid}', '{' + k.id + '}').replace('{gk}', '{' + k.gk + '}'), 'big', { f: 4 }, 3);
     });
     parents.forEach(p => {
       if (!p.alive) return;
       const pa = p.age + t;
-      if (!p.care && pa >= 74 && rnd() < (pa - 70) * 0.01) { p.care = true; add(T.family.parentCare.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -3, h: -2 }); extraSpend = 2.5; extraSpendYears = 6; }
-      if (rnd() < W.deathP(D, P.home, year, pa)) { p.alive = false; add(T.family.parentGone.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -4 }); }
+      if (!p.care && pa >= 74 && rnd() < (pa - 70) * 0.01) { p.care = true; p.careYears = CFG.careYears; add(T.family.parentCare.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -3, h: -2 }, -2); }
+      if (rnd() < W.deathP(D, P.home, year, pa, p.sex)) { p.alive = false; add(T.family.parentGone.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -4 }, -5); }
     });
-    if (spouse && spouse.alive && rnd() < W.deathP(D, P.home, year, spouse.age + t)) { spouse.alive = false; add(T.family.spouseGone, 'hit', { f: -15, h: -5 }); }
-    if (age > 70 && rnd() < 0.04) { const i = Math.floor(rnd() * friends.length); add(T.family.friendGone.replace('{fr}', '{' + friends[i] + '}'), 'hit', { f: -1 }); friends[i] = newRole('fr', 'TW'); }
+    if (spouse && spouse.alive && rnd() < W.deathP(D, P.home, year, spouse.age + t, sexSp)) { spouse.alive = false; add(T.family.spouseGone, 'hit', { f: -15, h: -5 }, -8); }
+    if (age > 70 && rnd() < 0.04) { const i = Math.floor(rnd() * friends.length); add(T.family.friendGone.replace('{fr}', '{' + friends[i] + '}'), 'hit', { f: -1 }, -1.5); friends[i] = newRole('fr', 'TW'); }
     if (ph.family_together === false) { f = clamp(f - 5); fromPool(T.family.apart.map(s => s.replace('{kid}', '{' + (kids[0] ? kids[0].id : 'fr1') + '}'))); }
     // 健康
     h = clamp(h - (age < 50 ? 0.4 : age < 65 ? 0.9 : 1.6));
-    if (rnd() < (age < 45 ? 0.05 : age < 60 ? 0.1 : 0.18)) { const big = rnd() < (age < 60 ? 0.15 : 0.3); fromPool(big ? T.health.big : T.health.small, big ? 'hit' : '', { h: big ? -12 : -4, m: big ? -10 : -1 }); }
+    if (rnd() < (age < 45 ? 0.05 : age < 60 ? 0.1 : 0.18)) { const big = rnd() < (age < 60 ? 0.15 : 0.3); const got = fromPool(big ? T.health.big : T.health.small, big ? 'hit' : '', { h: big ? -12 : -4, m: big ? -10 : -1 }); if (big && got) ev[ev.length - 1][2] = -4; }
     // 每年 5～15 件：照人生階段從各類事件補
     const target = 5 + Math.floor(rnd() * 11), pools = [];
     if (!retired) pools.push([T.work.pool, 4]);
     if (spouse && spouse.alive) pools.push([T.family.spouse, 2]);
     kids.forEach(k => {
-      const a = k.age0 + t, sub = s => s.replace(/\{kid\}/g, '{' + k.id + '}').replace('{ks}', '{' + (k.ks || 'fr1') + '}');
+      const a = k.age0 + t, sub = s => s.replace(/\{kid\}/g, '{' + k.id + '}').replace('{ks}', '{' + k.ks + '}');
       if (a < 7) pools.push([T.family.kidYoung.map(sub), 2]); else if (a < 13) pools.push([T.family.kidSchool.map(sub), 2]);
-      else if (a < 19) pools.push([T.family.kidTeen.map(sub), 1.5]); else if (a < 45) pools.push([T.family.kidAdult.map(sub), 0.8]);
-      if (k.gk && a >= 32 && a < 50) pools.push([T.family.gk.map(s => s.replace('{gk}', '{' + k.gk + '}')), 1]);
+      else if (a < 19) pools.push([T.family.kidTeen.map(sub), 1.5]); else if (a < 45) pools.push([T.family.kidAdult.filter(s => k.ks || !s.includes('{ks}')).map(sub), 0.8]);
+      if (k.gk && a > k.baby && a < k.baby + 18) pools.push([T.family.gk.map(s => s.replace('{gk}', '{' + k.gk + '}')), 1]);
     });
     if (alivePa().length) pools.push([T.family.parent, 1]);
     pools.push([age < 68 ? T.family.friend : T.family.friendOld, 1.2], [T.life.small, 2], [T.health.good, age < 75 ? 0.5 : 0.1]);
@@ -128,19 +160,17 @@ function runOnce(D, P, opt, seed) {
       fromPool(pool, '', pool === T.health.good ? { h: 2 } : pool === T.family.spouse ? { f: 1 } : {});
     }
     recent.splice(0, recent.length, ...usedT);
-    const ladder = P.titles || ['專員', '主任', '經理', '處長', '協理', '副總'];
-    const ti = Math.max(0, Math.min(ladder.length - 1, (P.title_index ?? 2) + Math.floor((c - 50) / 18)));
     const stage = a => a < 3 ? '在家' : a < 6 ? '念幼兒園' : a < 12 ? '念小學' : a < 15 ? '念國中' : a < 18 ? '念高中' : a < 22 ? '念大學' : '上班';
     const profile = {
-      title: retired ? '退休' : ladder[ti], income: Math.round(retired ? income : income + 0), health: h >= 75 ? '很好' : h >= 55 ? '還不錯' : h >= 35 ? '常常不舒服' : '需要人照顧',
+      title: retired ? '退休' : ladder[tIdx], income: Math.round(income), pension: retired, health: h >= 75 ? '很好' : h >= 55 ? '還不錯' : h >= 35 ? '常常不舒服' : '需要人照顧',
       sp: spouse ? { age: spouse.age + t, status: !spouse.alive ? '已過世' : retired ? '退休' : (ph.spouse_income || 0) > 0 ? '上班' : '在家' } : null,
-      kids: kids.map(k => { const ka = k.age0 + t; return { age: ka, status: ka >= 30 && k.ks ? '已婚，另一半是{' + k.ks + '}' : stage(ka) }; }),
+      kids: kids.map(k => { const ka = k.age0 + t; return { age: ka, status: k.wed && ka >= k.wed ? '已婚，另一半是{' + k.ks + '}' + (k.baby && ka >= k.baby ? '，有一個小孩' : '') : stage(ka) }; }),
       parents: parents.map(pp => ({ id: pp.id, age: pp.age + t, status: !pp.alive ? '已過世' : pp.care ? '需要照顧' : pp.age + t >= 80 ? '身體還行' : '身體健康' })),
       boss: boss ? '{' + boss + '}' : '', cws: cws.map(x => '{' + x + '}'), friends: friends.map(x => '{' + x + '}')
     };
     if (retired) m = Math.max(0, m);
     years.push({ age, year, city: CITY[ph.country] || ph.country, events: ev, profile, stats: { m: Math.round(retired ? Math.max(0, m) : m), h: Math.round(h), f: Math.round(f), c: Math.round(c) } });
-    if (rnd() < W.deathP(D, ph.country, year, age) * (h < 30 ? 1.6 : 1)) { years[years.length - 1].events.push([T.life.end(age), 'end']); break; }
+    if (rnd() < W.deathP(D, ph.country, year, age, sexMe) * (h < 30 ? 1.6 : 1)) { years[years.length - 1].events.push([T.life.end(age), 'end', 0]); break; }
     age++;
   }
   return { years, roles };
@@ -155,10 +185,11 @@ function scoreRun(years, goals) {
 // 換名字：現有的家人整份報告同一組（用戶 2026-11-03 同意）；之後認識的人，整份報告不重複
 function nameLife(run, family, used, rnd) {
   const map = Object.assign({}, family);
-  Object.entries(run.roles).forEach(([id, r]) => { map[id] = NM.make(r.style, r.g, rnd, used, r.kind === 'gk' ? family.__sur : null); });
+  Object.entries(run.roles).filter(([, r]) => r.kind !== 'gk').forEach(([id, r]) => { map[id] = NM.make(r.style, r.g, rnd, used, null); });
+  Object.entries(run.roles).filter(([, r]) => r.kind === 'gk').forEach(([id, r]) => { map[id] = NM.make('TW', r.g, rnd, used, r.kid.sex === 'F' && r.kid.ks ? map[r.kid.ks][0] : family.__sur); });
   const sub = s => s.replace(/\{([a-z]+\d*)\}/g, (_, id) => map[id] || '家人');
   run.years.forEach(y => {
-    y.events = y.events.map(e => [sub(e[0]), e[1]]);
+    y.events = y.events.map(e => [sub(e[0]), e[1], e[2]]);
     const pr = y.profile; pr.boss = sub(pr.boss); pr.cws = pr.cws.map(sub); pr.friends = pr.friends.map(sub);
     pr.kids.forEach(k => { k.status = sub(k.status); });
   });
@@ -166,16 +197,22 @@ function nameLife(run, family, used, rnd) {
 
 function summarize(run) {
   const years = run.years;
-  const mood = y => y.events.reduce((s, e) => s + (e[1] === 'big' ? 2 : e[1] === 'hit' || e[1] === 'end' ? -2 : 0.15), 0);
+  // 一年順不順只看大事的權重（普通的事是 0），事多的年不會因此看起來比較順
+  const mood = y => y.events.reduce((s, e) => s + (e[2] || 0), 0);
   const ys = years.map(y => ({ ...y, mood: Math.round(mood(y) * 10) / 10 }));
-  const allEv = years.flatMap(y => y.events.map(e => [y.age, e[0], e[1]]));
-  const best = ys.reduce((a, b) => (b.mood > a.mood ? b : a)), worst = ys.reduce((a, b) => (b.mood < a.mood ? b : a));
   const end = years[years.length - 1].age;
+  // 大事：每 10 年挑權重最高的一件，再補最重的，最多 5 件，照年紀排
+  const goods = years.flatMap(y => y.events.filter(e => e[2] > 0).map(e => ({ age: y.age, text: e[0], w: e[2] })));
+  const byDec = {}; goods.forEach(g => { const d = Math.floor(g.age / 10); if (!byDec[d] || g.w > byDec[d].w) byDec[d] = g; });
+  let big = Object.values(byDec).sort((a, b) => b.w - a.w).slice(0, 5);
+  goods.slice().sort((a, b) => b.w - a.w).forEach(g => { if (big.length < 5 && !big.includes(g)) big.push(g); });
+  big = big.sort((a, b) => a.age - b.age).map(g => g.age + ' 歲：' + g.text);
+  const best = ys.reduce((a, b) => (b.mood > a.mood ? b : a)), worst = ys.reduce((a, b) => (b.mood < a.mood ? b : a));
+  const top = (y, sign) => y.events.slice().sort((a, b) => sign * ((b[2] || 0) - (a[2] || 0)))[0];
   return {
     end, years: ys, map: ys.map(y => y.mood),
-    card: { end, peak: Math.max(...years.map(y => y.stats.m)), left: years[years.length - 1].stats.m, big: allEv.filter(e => e[2] === 'big').slice(0, 5).map(e => e[0] + ' 歲：' + e[1]),
-      best: best.age + ' 歲：' + (best.events.find(e => e[1] === 'big') || best.events[0])[0],
-      worst: worst.age + ' 歲：' + (worst.events.find(e => e[1] === 'hit' || e[1] === 'end') || worst.events[0])[0] }
+    card: { end, peak: Math.max(...years.map(y => y.stats.m)), left: years[years.length - 1].stats.m, big,
+      best: best.age + ' 歲：' + top(best, 1)[0], worst: worst.age + ' 歲：' + top(worst, -1)[0] }
   };
 }
 
@@ -187,10 +224,18 @@ function main() {
   const D = W.load([...new Set([P.home, ...P.options.flatMap(o => o.phases.map(p => p.country))])]);
   const nr = rng(seed0 * 7 + 3), used = new Set(), fam = P.family || {};
   const sur = NM.TW_SUR[Math.floor(nr() * NM.TW_SUR.length)];
-  const family = { __sur: sur, sp: NM.make('TW', fam.spouse_gender || 'F', nr, used), father: NM.make('TW', 'M', nr, used, sur), mother: NM.make('TW', 'F', nr, used) };
-  (fam.kids || []).forEach((a, i) => { family['kid' + i] = NM.make('TW', nr() < 0.5 ? 'M' : 'F', nr, used, sur); });
-  const out = { case: P.case, generated: new Date().toISOString().slice(0, 10), runs: N, start_age: P.age, kids: fam.kids || [],
-    family: [['另一半', family.sp], ...(fam.kids || []).map((a, i) => [(fam.kids.length > 1 ? (i === 0 ? '小的' : '大的') : '小孩') + '（' + a + ' 歲）', family['kid' + i]]), ['爸爸', family.father], ['媽媽', family.mother]],
+  const sexMe = P.gender || 'M', sexSp = fam.spouse_gender || (sexMe === 'M' ? 'F' : 'M');
+  const family = { sp: NM.make('TW', sexSp, nr, used), father: NM.make('TW', 'M', nr, used, sur), mother: NM.make('TW', 'F', nr, used) };
+  // 小孩跟爸爸姓：你是男生就是你的姓（=你爸爸的姓），你是女生就是另一半的姓
+  family.__sur = sexMe === 'M' ? sur : family.sp[0];
+  const kidSex = (fam.kids || []).map(() => (nr() < 0.5 ? 'M' : 'F'));
+  kidSex.forEach((g, i) => { family['kid' + i] = NM.make('TW', g, nr, used, family.__sur); });
+  P.__kidSex = kidSex;
+  // 小孩的稱呼照年紀排：老大、老二、老三…（嚴審 F7）
+  const order = (fam.kids || []).map((a, i) => i).sort((x, y) => fam.kids[y] - fam.kids[x]);
+  const kidLabel = i => (fam.kids.length === 1 ? '小孩' : ['老大', '老二', '老三', '老四', '老五'][order.indexOf(i)] || '小孩');
+  const out = { case: P.case, generated: new Date().toISOString().slice(0, 10), runs: N, start_age: P.age, kids: fam.kids || [], gender: sexMe,
+    family: [['另一半', family.sp, sexSp], ...(fam.kids || []).map((a, i) => [kidLabel(i), family['kid' + i], kidSex[i]]), ['爸爸', family.father, 'M'], ['媽媽', family.mother, 'F']],
     options: [] };
   const all = [];
   P.options.forEach((opt, oi) => {
@@ -213,9 +258,13 @@ function main() {
     const lifeMed = s.map(r => r.run.years.length).sort((a, b) => a - b)[s.length >> 1];
     const pick = (q, ok) => { const lo = Math.round((q - 0.05) * (s.length - 1)), hi = Math.round((q + 0.05) * (s.length - 1)), mid = Math.round(q * (s.length - 1));
       let best = null; for (let i = lo; i <= hi; i++) if (ok(s[i]) && (!best || Math.abs(i - mid) < Math.abs(best[0] - mid))) best = [i, s[i]];
-      return (best ? best[1] : s[mid]).run; };
-    const good = pick(0.8, r => r.run.years.length >= lifeMed), bad = pick(0.2, r => r.run.years.length <= good.years.length);
-    [['good', good], ['bad', bad]].forEach(([k, run]) => { nameLife(run, family, used, nr); o[k] = summarize(run); });
+      const hit = best || [mid, s[mid]]; return { run: hit[1].run, pct: Math.round(hit[0] / (s.length - 1) * 100) }; };
+    const good = pick(0.8, r => r.run.years.length >= lifeMed), bad = pick(0.2, r => r.run.years.length <= good.run.years.length);
+    [['good', good], ['bad', bad]].forEach(([k, g]) => { nameLife(g.run, family, used, nr); o[k] = summarize(g.run); o[k].pct = g.pct; });
+    // 500 次的分布，給畫面寫「中位數」「活到 80 歲以上的有幾成」
+    const ends = o.runs.map(r => r.run.years[r.run.years.length - 1].age).sort((a, b) => a - b);
+    const lefts = o.runs.map(r => r.run.years[r.run.years.length - 1].stats.m).sort((a, b) => a - b);
+    o.dist = { medEnd: ends[ends.length >> 1], medLeft: Math.round(lefts[lefts.length >> 1]), over80: Math.round(ends.filter(a => a >= 80).length / ends.length * 100) };
     o.median_score = Math.round(medians[medians.length - 1] * 100) / 100;
     delete o.runs;
   });

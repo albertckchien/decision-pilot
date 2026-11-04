@@ -1,0 +1,488 @@
+diff --git a/assets/sim.css b/assets/sim.css
+index db0c835..ae53748 100644
+--- a/assets/sim.css
++++ b/assets/sim.css
+@@ -74,3 +74,17 @@
+ .sim-profile dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.15rem .6rem}
+ .sim-profile dt{color:var(--muted)}
+ .sim-profile dd{margin:0}
++/* 嚴審 2026-11-05：說明、事件清單貼著場景、個人資訊可收起、字卡不蓋年紀、層級表 */
++:root{--z-scene:1;--z-label:2;--z-pop:3;--z-card:10}
++.sim-place,.sim-age{z-index:var(--z-label)}
++.sim-pop{z-index:var(--z-pop);top:auto;bottom:8%;transform:translateX(-50%)}
++.sim-pop.show{animation:sim-pop2 1.6s cubic-bezier(.22,1,.36,1) forwards}
++@keyframes sim-pop2{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}18%{opacity:1;transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-6px)}}
++.sim-card{z-index:var(--z-card)}
++.sim-lead{font-size:.95rem;margin:.4rem 0 1rem;max-width:60rem}
++.sim-feed{height:16rem;margin-top:.6rem}
++.sim-pd{margin-top:.7rem}
++.sim-pd summary{cursor:pointer;font-size:.88rem;padding:.35rem 0;color:var(--muted)}
++.sim-card .dist{font-size:.85rem;color:#ccc;margin:0}
++@media(max-width:760px){.sim-feed{height:11rem}.sim-pop{font-size:.85rem}}
++@media(prefers-reduced-motion:reduce){.sim-pop.show{animation:none;opacity:1}}
+diff --git a/assets/sim.js b/assets/sim.js
+index 3fda5a0..7bfa9b2 100644
+--- a/assets/sim.js
++++ b/assets/sim.js
+@@ -3,22 +3,31 @@
+ window.renderSim = function (root, data) {
+   if (!data || !data.options || !data.options.length) return;
+   var cur = 0, step = 0, maxStep = 0, timer = null, speed = 1, SPEEDS = [1, 2, 4, 8], scenes = {};
+-  var FAM = {}; (data.family || []).forEach(function (p) { FAM[p[0]] = p[1]; });
++  var FAM = {}, SEX = {}; (data.family || []).forEach(function (p) { FAM[p[0]] = p[1]; SEX[p[0]] = p[2]; });
++  var KIDS = (data.family || []).filter(function (f) { return /^老|^小孩/.test(f[0]); });
++  var mobile = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
++  // 金額都走這裡（嚴審 F12、F13）：負的寫負債，一萬萬以上寫億，其他加千分位
++  function money(m) {
++    if (m < 0) return '負債 ' + Math.round(-m).toLocaleString('zh-TW') + ' 萬';
++    if (m >= 10000) return (m / 10000).toFixed(m >= 100000 ? 0 : 1) + ' 億';
++    return Math.round(m).toLocaleString('zh-TW') + ' 萬';
++  }
+ 
+   root.insertAdjacentHTML('beforeend',
++    '<p class="sim-lead">每條路各跑了 ' + data.runs + ' 次人生，國家的景氣、匯率、天災照真實資料擲骰，壽命照生命表。下面挑出運氣好、運氣差各一段並排播放。人生選擇一律保守，好壞只來自外在的運氣。<strong>這是示意，不是預測，也不是理財建議。</strong>按「播放」開始。</p>' +
+     '<div class="sim-opts" role="group" aria-label="選一個選項">' + data.options.map(function (o, i) { return '<button class="sim-opt" data-i="' + i + '" aria-pressed="' + (i === 0) + '"><strong>' + esc(o.id + '　' + o.name) + '</strong><span>' + esc(o.sub || '') + '</span></button>'; }).join('') + '</div>' +
+     '<div class="sim-ctrl"><button class="go sim-play">播放</button><button class="sim-spd">速度 1×</button><button class="sim-skip">跳到結局</button><span class="sp"></span><button class="sim-only-m" data-one="good" aria-pressed="true">運氣好</button><button class="sim-only-m" data-one="bad" aria-pressed="false">運氣差</button></div>' +
+     '<div class="sim-stages" data-one="good"><section class="sim-stage good" aria-label="運氣好的那一段"></section><section class="sim-stage bad" aria-label="運氣差的那一段"></section></div>' +
+-    '<p class="sim-note">每條路跑了 ' + data.runs + ' 次，挑出排在前兩成和後兩成附近的兩段。人生選擇一律保守，好壞只來自外在的運氣。金額都換算成今天的錢；數字是示意，不是預測。</p>');
++    '<p class="sim-note">金額都換算成今天的錢。算進去的：薪水、另一半的收入、生活費、小孩念大學、照顧爸媽、退休年金、存款的報酬；沒算進去的：房貸、保險、外派的津貼和額外花費。數字是示意，判斷請看報告前面的分析。</p>');
+   var Q = function (s) { return root.querySelector(s); };
+ 
+   function profileHtml(y) {
+-    var p = y.profile || {}, kidF = (data.family || []).filter(function (f) { return /小的|大的|小孩/.test(f[0]); });
+-    var me = [['年紀', y.age + ' 歲，住' + y.city], ['工作', (p.title || '') + (p.income ? '，年收入約 ' + p.income + ' 萬' : '')], ['存款', y.stats.m + ' 萬'], ['身體', p.health || '']];
++    var p = y.profile || {};
++    var me = [['年紀', y.age + ' 歲，住' + y.city], p.pension ? ['收入', '退休，年金約 ' + money(p.income) + '／年'] : ['工作', (p.title || '') + (p.income ? '，年收入約 ' + money(p.income) : '')], [y.stats.m < 0 ? '負債' : '存款', money(y.stats.m).replace('負債 ', '')], ['身體', p.health || '']];
+     var fam = [];
+     if (p.sp) fam.push(['另一半', FAM['另一半'] + '，' + (p.sp.status === '已過世' ? '已過世' : p.sp.age + ' 歲，' + p.sp.status)]);
+-    (p.kids || []).forEach(function (k, i) { var f = kidF[i]; fam.push([f ? f[0].replace(/（.*）/, '') : '小孩', (f ? f[1] + '，' : '') + k.age + ' 歲，' + k.status]); });
++    (p.kids || []).forEach(function (k, i) { var f = KIDS[i]; fam.push([f ? f[0] : '小孩', (f ? f[1] + '，' : '') + k.age + ' 歲，' + k.status]); });
+     (p.parents || []).forEach(function (pp) { var lab = pp.id === 'father' ? '爸爸' : '媽媽'; fam.push([lab, FAM[lab] + '，' + (pp.status === '已過世' ? '已過世' : pp.age + ' 歲，' + pp.status)]); });
+     var near = [];
+     if (p.boss) near.push(['主管', p.boss]);
+@@ -29,32 +38,36 @@ window.renderSim = function (root, data) {
+   }
+ 
+   function build(k) {
+-    var L = data.options[cur][k], st = Q('.sim-stage.' + k), y0 = L.years[0];
++    var O = data.options[cur], L = O[k], st = Q('.sim-stage.' + k), y0 = L.years[0];
+     if (scenes[k]) scenes[k].stop();
+-    st.innerHTML = '<h3><span class="' + (k === 'good' ? 'sim-good-t' : '') + '">' + (k === 'good' ? '運氣好的那一段' : '運氣差的那一段') + '</span><small>不是最' + (k === 'good' ? '好' : '慘') + '的那次</small></h3>' +
+-      '<div class="sim-scene"><canvas class="sim-px" aria-hidden="true"></canvas><span class="sim-place">' + esc(y0.city) + '</span><div class="sim-age">' + y0.age + '<small>' + y0.year + '</small></div><div class="sim-pop" aria-live="polite"></div></div>' +
+-      '<div class="sim-profile">' + profileHtml(y0) + '</div>' +
++    var rank = L.pct != null ? '在 ' + data.runs + ' 次裡排第 ' + L.pct + ' 百分位' : (k === 'good' ? '不是最好的那次' : '不是最慘的那次');
++    // 順序（嚴審 F9）：場景、今年的事、數值，個人資訊收在可以展開的區塊，手機上預設收起
++    st.innerHTML = '<h3><span class="' + (k === 'good' ? 'sim-good-t' : '') + '">' + (k === 'good' ? '運氣好的那一段' : '運氣差的那一段') + '</span><small>' + rank + '</small></h3>' +
++      '<div class="sim-scene"><canvas class="sim-px" aria-hidden="true"></canvas><span class="sim-place">' + esc(y0.city) + '</span><div class="sim-age">' + y0.age + '<small>' + y0.year + '</small></div><div class="sim-pop"></div></div>' +
++      '<ol class="sim-feed" aria-live="off"></ol>' +
+       '<div class="sim-bars"><span>存款</span><div class="sim-bar money"><i></i></div><b class="v-m"></b><span>健康</span><div class="sim-bar"><i></i></div><b class="v-h"></b><span>家庭</span><div class="sim-bar"><i></i></div><b class="v-f"></b><span>事業</span><div class="sim-bar"><i></i></div><b class="v-c"></b></div>' +
+-      '<ol class="sim-feed" aria-live="off"></ol><div class="sim-map">' + L.map.map(function () { return '<span></span>'; }).join('') + '</div><div class="sim-maplab"><span>' + y0.age + ' 歲</span><span>人生地圖：一格一年，越藍越順、越黑越難</span><span>' + L.end + ' 歲</span></div><div class="sim-card"></div>';
++      '<details class="sim-pd"' + (mobile ? '' : ' open') + '><summary>你和身邊的人</summary><div class="sim-profile">' + profileHtml(y0) + '</div></details>' +
++      '<div class="sim-map">' + L.map.map(function () { return '<span></span>'; }).join('') + '</div><div class="sim-maplab"><span>' + y0.age + ' 歲</span><span>人生地圖：一格一年，藍色是有好事的年，黑色是有壞事的年</span><span>' + L.end + ' 歲</span></div><div class="sim-card"></div>';
+     st._peak = Math.max(1, L.card.peak);
+     scenes[k] = window.PixelScene ? window.PixelScene(st.querySelector('.sim-px')) : null;
+     setScene(k, y0);
+     bars(st, y0.stats);
+   }
++  // 畫面的性別讀引擎給的，不自己猜（嚴審 F6）
+   function setScene(k, y) {
+     if (!scenes[k]) return;
+     var p = y.profile || {};
+-    scenes[k].set({ city: y.city, age: y.age, spouse: !!(p.sp && p.sp.status !== '已過世'), spouseFemale: true,
+-      kids: (p.kids || []).map(function (kd, i) { return { age: kd.age, female: i % 2 === 0 }; }) });
++    scenes[k].set({ city: y.city, age: y.age, female: data.gender === 'F', spouse: !!(p.sp && p.sp.status !== '已過世'), spouseFemale: SEX['另一半'] !== 'M',
++      kids: (p.kids || []).map(function (kd, i) { return { age: kd.age, female: KIDS[i] ? KIDS[i][2] === 'F' : false }; }) });
+   }
+   function bars(st, s) {
+     var b = st.querySelectorAll('.sim-bar i');
+     b[0].style.width = Math.max(2, Math.min(100, s.m / st._peak * 100)) + '%'; b[1].style.width = s.h + '%'; b[2].style.width = s.f + '%'; b[3].style.width = s.c + '%';
+-    st.querySelector('.v-m').textContent = s.m + ' 萬'; st.querySelector('.v-h').textContent = s.h; st.querySelector('.v-f').textContent = s.f; st.querySelector('.v-c').textContent = s.c;
++    st.querySelector('.v-m').textContent = money(s.m); st.querySelector('.v-h').textContent = s.h; st.querySelector('.v-f').textContent = s.f; st.querySelector('.v-c').textContent = s.c;
+   }
+   function paint(st, L, upto) {
+     var cells = st.querySelectorAll('.sim-map span');
+-    for (var i = 0; i <= upto && i < L.map.length; i++) { var v = L.map[i]; cells[i].style.background = v > 2 ? '#1a4be0' : v > 0.5 ? '#7f9cf0' : v > -1 ? '#bfbfbf' : '#111'; }
++    for (var i = 0; i <= upto && i < L.map.length; i++) { var v = L.map[i]; cells[i].style.background = v >= 3 ? '#1a4be0' : v > 0 ? '#7f9cf0' : v > -3 ? '#bfbfbf' : '#111'; cells[i].title = L.years[i].age + ' 歲'; }
+   }
+   function pop(st, text, kind) { var p = st.querySelector('.sim-pop'); p.className = 'sim-pop' + (kind ? ' ' + kind : ''); p.textContent = text; void p.offsetWidth; p.classList.add('show'); }
+   function feed(st, html, cls) { var f = st.querySelector('.sim-feed'), li = document.createElement('li'); li.className = cls || ''; li.innerHTML = html; f.prepend(li); while (f.children.length > 14) f.lastChild.remove(); }
+@@ -68,23 +81,27 @@ window.renderSim = function (root, data) {
+       st.querySelector('.sim-profile').innerHTML = profileHtml(y);
+       var gap = quick ? 0 : Math.min(160, 1100 / speed / Math.max(1, y.events.length));
+       y.events.forEach(function (e, j) { var go = function () { feed(st, '<span class="y">' + y.age + ' 歲</span><span>' + esc(e[0]) + '</span>', e[1]); }; if (gap) setTimeout(go, j * gap); else go(); });
+-      var main = y.events.find(function (e) { return e[1] === 'big' || e[1] === 'hit' || e[1] === 'end'; }) || y.events[0];
++      var main = y.events.slice().sort(function (a, b) { return Math.abs(b[2] || 0) - Math.abs(a[2] || 0); })[0];
+       if (main && !quick) pop(st, main[0], main[1]); else if (quick) st.querySelector('.sim-pop').className = 'sim-pop';
+       bars(st, y.stats); paint(st, L, i);
+     } else if (i === n) card(st, L, k);
+   }
+   function card(st, L, k) {
+-    var c = L.card, el = st.querySelector('.sim-card');
+-    el.innerHTML = '<h4>' + (k === 'good' ? '運氣好的這一生' : '運氣差的這一生') + '</h4><div class="row"><div><b>' + c.end + ' 歲</b><span>活到</span></div><div><b>' + c.peak + ' 萬</b><span>存款最高的時候</span></div><div><b>' + c.left + ' 萬</b><span>走的時候留下的</span></div></div><ul>' + c.big.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '<li>最順的一年：' + esc(c.best) + '</li><li>最難的一年：' + esc(c.worst) + '</li></ul><button class="again">再看一次</button>';
++    var c = L.card, D = data.options[cur].dist, el = st.querySelector('.sim-card');
++    el.innerHTML = '<h4>' + (k === 'good' ? '運氣好的這一生' : '運氣差的這一生') + '</h4><div class="row"><div><b>' + c.end + ' 歲</b><span>活到</span></div><div><b>' + money(c.peak) + '</b><span>存款最多的時候</span></div><div><b>' + money(c.left) + '</b><span>走的時候留下的</span></div></div>' +
++      (D ? '<p class="dist">這條路跑的 ' + data.runs + ' 次裡：一半的人活到 ' + D.medEnd + ' 歲以上，' + D.over80 + '% 活過 80 歲；留下的錢中位數約 ' + money(D.medLeft) + '。</p>' : '') +
++      '<ul>' + c.big.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '<li>最順的一年：' + esc(c.best) + '</li><li>最難的一年：' + esc(c.worst) + '</li></ul>' +
++      '<p class="dist">這是示意，不是預測。這兩段讓你感受這條路走下去的樣子，要怎麼選，請回到報告前面的比較和建議。</p><button class="again">再看一次</button>';
+     el.classList.add('show');
+-    el.querySelector('.again').onclick = reset;
++    el.querySelector('.again').onclick = function () { reset(); play(); };
+   }
+   function reset() { stop(); step = 0; build('good'); build('bad'); maxStep = Math.max(data.options[cur].good.years.length, data.options[cur].bad.years.length) + 1; }
+   function tick(quick) { apply('good', step, quick); apply('bad', step, quick); step++; if (step >= maxStep) stop(); }
+   function stop() { clearInterval(timer); timer = null; Q('.sim-play').textContent = step > 0 && step < maxStep ? '繼續' : '播放'; }
+-  function play() { if (timer) { stop(); return; } if (step >= maxStep) reset(); Q('.sim-play').textContent = '暫停'; timer = setInterval(function () { tick(false); }, 2000 / speed); }
++  // 按下去當下就推進第一年，不用等 2 秒（嚴審 F8）
++  function play() { if (timer) { stop(); return; } if (step >= maxStep) reset(); Q('.sim-play').textContent = '暫停'; tick(false); if (step < maxStep) timer = setInterval(function () { tick(false); }, 2000 / speed); else stop(); }
+   Q('.sim-play').onclick = play;
+-  Q('.sim-spd').onclick = function () { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; this.textContent = '速度 ' + speed + '×'; if (timer) { stop(); play(); } };
++  Q('.sim-spd').onclick = function () { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; this.textContent = '速度 ' + speed + '×'; if (timer) { clearInterval(timer); timer = setInterval(function () { tick(false); }, 2000 / speed); } };
+   Q('.sim-skip').onclick = function () { stop(); while (step < maxStep) tick(true); };
+   root.querySelectorAll('.sim-opt').forEach(function (b) { b.onclick = function () { cur = +b.dataset.i; root.querySelectorAll('.sim-opt').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); reset(); }; });
+   root.querySelectorAll('[data-one]').forEach(function (b) { b.onclick = function () { Q('.sim-stages').dataset.one = b.dataset.one; root.querySelectorAll('[data-one]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); }; });
+diff --git "a/engine/example_\346\264\276\351\247\220\346\226\260\345\212\240\345\235\241.json" "b/engine/example_\346\264\276\351\247\220\346\226\260\345\212\240\345\235\241.json"
+index 7dedc4b..02590ef 100644
+--- "a/engine/example_\346\264\276\351\247\220\346\226\260\345\212\240\345\235\241.json"
++++ "b/engine/example_\346\264\276\351\247\220\346\226\260\345\212\240\345\235\241.json"
+@@ -103,7 +103,8 @@
+           "kind": "big",
+           "effect": {
+             "c": 12,
+-            "income": 0.12
++            "income": 0.12,
++            "title": "處長"
+           }
+         },
+         {
+@@ -117,7 +118,8 @@
+           "group": "promo",
+           "kind": "hit",
+           "effect": {
+-            "c": -6
++            "c": -6,
++            "title": "處長"
+           }
+         }
+       ]
+@@ -147,7 +149,8 @@
+           "kind": "big",
+           "effect": {
+             "c": 12,
+-            "income": 0.12
++            "income": 0.12,
++            "title": "處長"
+           }
+         },
+         {
+@@ -160,7 +163,8 @@
+           "once": true,
+           "kind": "hit",
+           "effect": {
+-            "c": -5
++            "c": -5,
++            "title": "處長"
+           }
+         }
+       ]
+@@ -174,5 +178,6 @@
+     "協理",
+     "副總經理"
+   ],
+-  "title_index": 2
++  "title_index": 2,
++  "gender": "M"
+ }
+\ No newline at end of file
+diff --git a/engine/simulate.js b/engine/simulate.js
+index 08149eb..24fe707 100644
+--- a/engine/simulate.js
++++ b/engine/simulate.js
+@@ -20,12 +20,20 @@ function runOnce(D, P, opt, seed) {
+   const world = { type: 'normal' }, fam = P.family || {};
+   const roles = {}; let nid = 0;
+   const newRole = (kind, style) => { const id = kind + (++nid); roles[id] = { kind, style, g: rnd() < 0.5 ? 'M' : 'F' }; return id; };
++  // 性別只定一次（嚴審 2026-11-05）：你、另一半、爸媽照參數，壽命、稱謂、畫面都讀它
++  const sexMe = P.gender || 'M', sexSp = fam.spouse_gender || (sexMe === 'M' ? 'F' : 'M');
+   let age = P.age, m = P.savings, h = clamp(88 - Math.max(0, age - 30) * 0.4), f = 70, c = 50;
+-  let careerMult = 1, extraSpend = 0, extraSpendYears = 0, retired = false;
++  let careerMult = 1, retired = false;
++  const ladder = P.titles || ['專員', '主任', '經理', '處長', '協理', '副總'];
++  let tIdx = Math.min(ladder.length - 1, P.title_index ?? 2);
+   let boss = null, cws = [], jobCountry = null;
+   const friends = [newRole('fr', 'TW'), newRole('fr', 'TW'), newRole('fr', 'TW')];
+-  const kids = (fam.kids || []).map((a, i) => ({ id: 'kid' + i, age0: a, ks: null, gk: null }));
+-  const parents = fam.parents_age ? [{ id: 'father', age: fam.parents_age + 2, alive: true }, { id: 'mother', age: fam.parents_age, alive: true }] : [];
++  // 小孩什麼時候結婚、生小孩，每段人生各抽一次（假設：27～35 歲結婚，一成五不結婚；婚後 1～4 年生，兩成不生）
++  const kids = (fam.kids || []).map((a, i) => {
++    const wed = rnd() < 0.15 ? null : 27 + Math.floor(rnd() * 9);
++    return { id: 'kid' + i, sex: (P.__kidSex || [])[i], age0: a, ks: null, gk: null, wed, baby: wed && rnd() >= 0.2 ? wed + 1 + Math.floor(rnd() * 4) : null };
++  });
++  const parents = fam.parents_age ? [{ id: 'father', sex: 'M', age: fam.parents_age + 2, alive: true, careYears: 0 }, { id: 'mother', sex: 'F', age: fam.parents_age, alive: true, careYears: 0 }] : [];
+   const spouse = fam.spouse === false ? null : { age: P.age + (fam.spouse_age_gap || -2), alive: true };
+   const done = new Set(), years = [], recent = [];
+   const styleOf = cc => (cc === 'SGP' ? 'SG' : 'TW');
+@@ -38,24 +46,26 @@ function runOnce(D, P, opt, seed) {
+     const cty = countries[ph.country], ev = [], usedT = new Set();
+     const alivePa = () => parents.filter(p => p.alive);
+     const fill = s => s.replace('{cw}', '{' + pick(cws.length ? cws : friends, rnd) + '}').replace('{boss}', '{' + (boss || pick(friends, rnd)) + '}')
+-      .replace('{fr}', '{' + pick(friends, rnd) + '}').replace('{pa}', '{' + ((pick(alivePa(), rnd) || { id: 'mother' }).id) + '}');
+-    const add = (text, kind = '', eff = {}) => {
+-      ev.push([text, kind]);
++      .replace('{fr}', '{' + pick(friends, rnd) + '}').replace('{pa}', '{' + ((pick(alivePa(), rnd) || { id: 'mother' }).id) + '}').replace('{grand}', sexMe === 'F' ? '阿嬤' : '阿公');
++    const add = (text, kind = '', eff = {}, w) => {
++      ev.push([text, kind, w ?? (kind === 'big' ? 2 : kind === 'hit' ? -2 : 0)]);
+       m += eff.m || 0; h = clamp(h + (eff.h || 0)); f = clamp(f + (eff.f || 0)); c = clamp(c + (eff.c || 0));
+       if (eff.income) careerMult *= 1 + eff.income;
++      if (eff.title && ladder.indexOf(eff.title) > tIdx) tIdx = ladder.indexOf(eff.title);
+     };
+     const fromPool = (pool, kind = '', eff = {}) => {
+       for (let i = 0; i < 6; i++) { const tpl = pick(pool, rnd); if (usedT.has(tpl) || recent.includes(tpl)) continue; usedT.add(tpl); add(fill(tpl), kind, eff); return true; }
+       return false;
+     };
+-    if (!retired && ph.country !== jobCountry) { newJob(ph.country); add(fill(T.work.newJob)); }
++    // 換國家是同一家公司調派，不是換公司（嚴審 F2）
++    if (!retired && ph.country !== jobCountry) { newJob(ph.country); add(fill(T.work.transfer(CITY[ph.country] || ph.country)), '', {}, 0); }
+     // 國家大事
+-    if (world.type === 'global') add(T.world.global, 'hit', { c: -3 });
++    if (world.type === 'global') add(T.world.global, 'hit', { c: -3 }, -1.5);
+     cty.events.forEach(e => {
+-      if (e === 'recession') add(retired ? T.world.recessionRetired(CITY[ph.country]) : T.world.recession(CITY[ph.country]), 'hit', retired ? { m: -5 } : { c: -2 });
+-      if (e === 'currency') { add(T.world.currency(CITY[ph.country]), 'hit'); m *= 0.88; }
++      if (e === 'recession') add(retired ? T.world.recessionRetired(CITY[ph.country]) : T.world.recession(CITY[ph.country]), 'hit', retired ? { m: -5 } : { c: -2 }, -1);
++      if (e === 'currency') { add(T.world.currency(CITY[ph.country]), 'hit', {}, -2); m *= 0.88; }
+       if (e === 'quake' && rnd() < 0.25) fromPool(T.world.quake);
+-      if (e === 'quake_big') { if (rnd() < 0.06) add(T.world.quakeDamage, 'hit', { m: -15 }); else fromPool(T.world.quake); }
++      if (e === 'quake_big') { if (rnd() < 0.06) add(T.world.quakeDamage, 'hit', { m: -15 }, -2); else fromPool(T.world.quake); }
+       if ((e === 'typhoon' || e === 'typhoon_big') && rnd() < 0.3) fromPool(T.world.typhoon);
+     });
+     // 選項自己的事（寫報告那一步照報告內容填機率和影響）
+@@ -64,49 +74,54 @@ function runOnce(D, P, opt, seed) {
+       if (rnd() < e.p) { add(fill(e.text), e.kind || '', e.effect || {}); done.add(e.text); if (e.group) done.add('g:' + e.group); }
+     });
+     // 工作和收入
+-    if (!retired && age >= (P.retire_age || 63)) { retired = true; boss = null; cws = []; add(T.life.retire, 'big', { c: -10 }); }
++    if (!retired && age >= (P.retire_age || 63)) { retired = true; boss = null; cws = []; add(T.life.retire, 'big', { c: -10 }, 1); }
+     let income = 0;
+     if (!retired) {
+-      if (rnd() < (cty.rec ? 0.06 : 0.015)) { add(cty.rec ? T.work.layoffRec : T.work.layoff, 'hit', { c: -8, h: -3 }); careerMult *= 0.92; income -= ph.income * careerMult * 0.4; newJob(ph.country); add(fill(T.work.newJob)); }
++      if (rnd() < (cty.rec ? 0.06 : 0.015)) { add(cty.rec ? T.work.layoffRec : T.work.layoff, 'hit', { c: -8, h: -3 }, -4); careerMult *= 0.92; income -= ph.income * careerMult * 0.4; newJob(ph.country); add(fill(T.work.newJob)); }
+       const raise = 0.015 + Math.max(-0.03, cty.growth / 200) + (rnd() - 0.5) * 0.02 + (age < 50 ? 0.01 : 0);
+       careerMult *= 1 + raise;
+       if (raise > 0.045) fromPool(T.work.raise, '', { c: 2 });
++      // 升遷機率看事業數值，職位越高越難升
++      if (tIdx < ladder.length - 1 && rnd() < (Math.max(0, (c - 60) / 400) + (age < 55 ? 0.02 : 0.005)) / (tIdx + 1)) { tIdx++; add(T.work.promote(ladder[tIdx]), 'big', { c: 3, income: 0.1 }, 3); }
+       if (rnd() < 0.08) cws[Math.floor(rnd() * cws.length)] = newRole('cw', styleOf(ph.country));
+       income += ph.income * careerMult;
+       c = clamp(c + (age < 55 ? 1 : -0.5));
+     } else income = (P.pension_monthly || 2.5) * 12;
+     const spouseIncome = retired || !spouse || !spouse.alive ? 0 : (ph.spouse_income || 0);
+     const kidsUni = kids.filter(k => k.age0 + t >= 18 && k.age0 + t <= 21).length * 25;
++    // 照顧爸媽的開銷：每人最多 6 年，人走了就停（嚴審 F17）
++    const careCost = parents.reduce((s, p) => { if (p.alive && p.careYears > 0) { p.careYears--; return s + 30; } return s; }, 0);
+     // 金額一律用今天的錢算（實質）：收入、年金、開銷都不乘物價，存款的報酬也用扣掉通膨後的
+-    let spend = P.monthly_spend * 12 * (1 + Math.max(0, Math.min(age, 60) - P.age) * 0.01) + extraSpend * 12 + kidsUni;
+-    if (extraSpendYears > 0 && --extraSpendYears === 0) extraSpend = 0;
++    let spend = P.monthly_spend * 12 * (1 + Math.max(0, Math.min(age, 60) - P.age) * 0.01) + careCost + kidsUni;
+     if (retired) spend *= age >= 80 ? 0.65 : age >= 72 ? 0.75 : 0.85;  // 退休後花得少，越老越少
+     const net = (income + spouseIncome) * (retired ? 1 : 0.85);
+     // 存款見底就省著過：開銷壓到收入以內，不會一路欠到幾千萬
+-    if (m <= 0) { spend = Math.min(spend, net); if (!done.has('broke')) { add(T.life.broke, 'hit', { h: -2, f: -2 }); done.add('broke'); } }
++    if (m <= 0) { spend = Math.min(spend, net); if (!done.has('broke')) { add(T.life.broke, 'hit', { h: -2, f: -2 }, -3); done.add('broke'); } }
+     // 實質報酬約 2%，上下 2%；通膨超過 6% 的年頭存款被吃掉，貨幣危機那年再吃一成
+     const realRet = 0.02 + (rnd() - 0.5) * 0.04 - Math.max(0, cty.infl - 6) / 100 - (cty.cur ? 0.1 : 0);
+     m += net - spend + Math.max(0, m) * realRet;
+     // 家人：里程碑、照顧、離世（生命表）
+     kids.forEach(k => {
+       const a = k.age0 + t;
+-      if (a >= 29 && !k.ks) k.ks = newRole('ks', 'TW');
+-      if (a >= 31 && !k.gk) k.gk = newRole('gk', 'TW');
++      if (k.wed && a >= k.wed - 2 && !k.ks) { k.ks = newRole('ks', 'TW'); roles[k.ks].g = k.sex === 'F' ? 'M' : 'F'; }
++      if (k.baby && a >= k.baby && !k.gk) { k.gk = newRole('gk', 'TW'); roles[k.gk].kid = k; }
+       const ms = T.family.milestone[a];
+-      if (ms) add(ms[0].replace('{kid}', '{' + k.id + '}').replace('{ks}', '{' + (k.ks || 'fr1') + '}').replace('{gk}', '{' + (k.gk || 'fr1') + '}'), ms[1], { f: 3 });
++      if (ms) add(ms[0].replace('{kid}', '{' + k.id + '}'), ms[1], { f: 3 });
++      if (k.wed === a) add(T.family.wed.replace('{kid}', '{' + k.id + '}').replace('{ks}', '{' + k.ks + '}'), 'big', { f: 3 }, 3);
++      if (k.baby === a) add(T.family.baby.replace('{kid}', '{' + k.id + '}').replace('{gk}', '{' + k.gk + '}'), 'big', { f: 4 }, 3);
+     });
+     parents.forEach(p => {
+       if (!p.alive) return;
+       const pa = p.age + t;
+-      if (!p.care && pa >= 74 && rnd() < (pa - 70) * 0.01) { p.care = true; add(T.family.parentCare.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -3, h: -2 }); extraSpend = 2.5; extraSpendYears = 6; }
+-      if (rnd() < W.deathP(D, P.home, year, pa)) { p.alive = false; add(T.family.parentGone.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -4 }); }
++      if (!p.care && pa >= 74 && rnd() < (pa - 70) * 0.01) { p.care = true; p.careYears = 6; add(T.family.parentCare.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -3, h: -2 }, -2); }
++      if (rnd() < W.deathP(D, P.home, year, pa, p.sex)) { p.alive = false; add(T.family.parentGone.replace('{pa}', '{' + p.id + '}'), 'hit', { f: -4 }, -5); }
+     });
+-    if (spouse && spouse.alive && rnd() < W.deathP(D, P.home, year, spouse.age + t)) { spouse.alive = false; add(T.family.spouseGone, 'hit', { f: -15, h: -5 }); }
+-    if (age > 70 && rnd() < 0.04) { const i = Math.floor(rnd() * friends.length); add(T.family.friendGone.replace('{fr}', '{' + friends[i] + '}'), 'hit', { f: -1 }); friends[i] = newRole('fr', 'TW'); }
++    if (spouse && spouse.alive && rnd() < W.deathP(D, P.home, year, spouse.age + t, sexSp)) { spouse.alive = false; add(T.family.spouseGone, 'hit', { f: -15, h: -5 }, -8); }
++    if (age > 70 && rnd() < 0.04) { const i = Math.floor(rnd() * friends.length); add(T.family.friendGone.replace('{fr}', '{' + friends[i] + '}'), 'hit', { f: -1 }, -1.5); friends[i] = newRole('fr', 'TW'); }
+     if (ph.family_together === false) { f = clamp(f - 5); fromPool(T.family.apart.map(s => s.replace('{kid}', '{' + (kids[0] ? kids[0].id : 'fr1') + '}'))); }
+     // 健康
+     h = clamp(h - (age < 50 ? 0.4 : age < 65 ? 0.9 : 1.6));
+-    if (rnd() < (age < 45 ? 0.05 : age < 60 ? 0.1 : 0.18)) { const big = rnd() < (age < 60 ? 0.15 : 0.3); fromPool(big ? T.health.big : T.health.small, big ? 'hit' : '', { h: big ? -12 : -4, m: big ? -10 : -1 }); }
++    if (rnd() < (age < 45 ? 0.05 : age < 60 ? 0.1 : 0.18)) { const big = rnd() < (age < 60 ? 0.15 : 0.3); fromPool(big ? T.health.big : T.health.small, big ? 'hit' : '', { h: big ? -12 : -4, m: big ? -10 : -1 }); if (big) ev[ev.length - 1][2] = -4; }
+     // 每年 5～15 件：照人生階段從各類事件補
+     const target = 5 + Math.floor(rnd() * 11), pools = [];
+     if (!retired) pools.push([T.work.pool, 4]);
+@@ -128,19 +143,17 @@ function runOnce(D, P, opt, seed) {
+       fromPool(pool, '', pool === T.health.good ? { h: 2 } : pool === T.family.spouse ? { f: 1 } : {});
+     }
+     recent.splice(0, recent.length, ...usedT);
+-    const ladder = P.titles || ['專員', '主任', '經理', '處長', '協理', '副總'];
+-    const ti = Math.max(0, Math.min(ladder.length - 1, (P.title_index ?? 2) + Math.floor((c - 50) / 18)));
+     const stage = a => a < 3 ? '在家' : a < 6 ? '念幼兒園' : a < 12 ? '念小學' : a < 15 ? '念國中' : a < 18 ? '念高中' : a < 22 ? '念大學' : '上班';
+     const profile = {
+-      title: retired ? '退休' : ladder[ti], income: Math.round(retired ? income : income + 0), health: h >= 75 ? '很好' : h >= 55 ? '還不錯' : h >= 35 ? '常常不舒服' : '需要人照顧',
++      title: retired ? '退休' : ladder[tIdx], income: Math.round(income), pension: retired, health: h >= 75 ? '很好' : h >= 55 ? '還不錯' : h >= 35 ? '常常不舒服' : '需要人照顧',
+       sp: spouse ? { age: spouse.age + t, status: !spouse.alive ? '已過世' : retired ? '退休' : (ph.spouse_income || 0) > 0 ? '上班' : '在家' } : null,
+-      kids: kids.map(k => { const ka = k.age0 + t; return { age: ka, status: ka >= 30 && k.ks ? '已婚，另一半是{' + k.ks + '}' : stage(ka) }; }),
++      kids: kids.map(k => { const ka = k.age0 + t; return { age: ka, status: k.wed && ka >= k.wed ? '已婚，另一半是{' + k.ks + '}' + (k.baby && ka >= k.baby ? '，有一個小孩' : '') : stage(ka) }; }),
+       parents: parents.map(pp => ({ id: pp.id, age: pp.age + t, status: !pp.alive ? '已過世' : pp.care ? '需要照顧' : pp.age + t >= 80 ? '身體還行' : '身體健康' })),
+       boss: boss ? '{' + boss + '}' : '', cws: cws.map(x => '{' + x + '}'), friends: friends.map(x => '{' + x + '}')
+     };
+     if (retired) m = Math.max(0, m);
+     years.push({ age, year, city: CITY[ph.country] || ph.country, events: ev, profile, stats: { m: Math.round(retired ? Math.max(0, m) : m), h: Math.round(h), f: Math.round(f), c: Math.round(c) } });
+-    if (rnd() < W.deathP(D, ph.country, year, age) * (h < 30 ? 1.6 : 1)) { years[years.length - 1].events.push([T.life.end(age), 'end']); break; }
++    if (rnd() < W.deathP(D, ph.country, year, age, sexMe) * (h < 30 ? 1.6 : 1)) { years[years.length - 1].events.push([T.life.end(age), 'end', 0]); break; }
+     age++;
+   }
+   return { years, roles };
+@@ -155,10 +168,11 @@ function scoreRun(years, goals) {
+ // 換名字：現有的家人整份報告同一組（用戶 2026-11-03 同意）；之後認識的人，整份報告不重複
+ function nameLife(run, family, used, rnd) {
+   const map = Object.assign({}, family);
+-  Object.entries(run.roles).forEach(([id, r]) => { map[id] = NM.make(r.style, r.g, rnd, used, r.kind === 'gk' ? family.__sur : null); });
++  Object.entries(run.roles).filter(([, r]) => r.kind !== 'gk').forEach(([id, r]) => { map[id] = NM.make(r.style, r.g, rnd, used, null); });
++  Object.entries(run.roles).filter(([, r]) => r.kind === 'gk').forEach(([id, r]) => { map[id] = NM.make('TW', r.g, rnd, used, r.kid.sex === 'F' && r.kid.ks ? map[r.kid.ks][0] : family.__sur); });
+   const sub = s => s.replace(/\{([a-z]+\d*)\}/g, (_, id) => map[id] || '家人');
+   run.years.forEach(y => {
+-    y.events = y.events.map(e => [sub(e[0]), e[1]]);
++    y.events = y.events.map(e => [sub(e[0]), e[1], e[2]]);
+     const pr = y.profile; pr.boss = sub(pr.boss); pr.cws = pr.cws.map(sub); pr.friends = pr.friends.map(sub);
+     pr.kids.forEach(k => { k.status = sub(k.status); });
+   });
+@@ -166,16 +180,22 @@ function nameLife(run, family, used, rnd) {
+ 
+ function summarize(run) {
+   const years = run.years;
+-  const mood = y => y.events.reduce((s, e) => s + (e[1] === 'big' ? 2 : e[1] === 'hit' || e[1] === 'end' ? -2 : 0.15), 0);
++  // 一年順不順只看大事的權重（普通的事是 0），事多的年不會因此看起來比較順
++  const mood = y => y.events.reduce((s, e) => s + (e[2] || 0), 0);
+   const ys = years.map(y => ({ ...y, mood: Math.round(mood(y) * 10) / 10 }));
+-  const allEv = years.flatMap(y => y.events.map(e => [y.age, e[0], e[1]]));
+-  const best = ys.reduce((a, b) => (b.mood > a.mood ? b : a)), worst = ys.reduce((a, b) => (b.mood < a.mood ? b : a));
+   const end = years[years.length - 1].age;
++  // 大事：每 10 年挑權重最高的一件，再補最重的，最多 5 件，照年紀排
++  const goods = years.flatMap(y => y.events.filter(e => e[2] > 0).map(e => ({ age: y.age, text: e[0], w: e[2] })));
++  const byDec = {}; goods.forEach(g => { const d = Math.floor(g.age / 10); if (!byDec[d] || g.w > byDec[d].w) byDec[d] = g; });
++  let big = Object.values(byDec).sort((a, b) => b.w - a.w).slice(0, 5);
++  goods.slice().sort((a, b) => b.w - a.w).forEach(g => { if (big.length < 5 && !big.includes(g)) big.push(g); });
++  big = big.sort((a, b) => a.age - b.age).map(g => g.age + ' 歲：' + g.text);
++  const best = ys.reduce((a, b) => (b.mood > a.mood ? b : a)), worst = ys.reduce((a, b) => (b.mood < a.mood ? b : a));
++  const top = (y, sign) => y.events.slice().sort((a, b) => sign * ((b[2] || 0) - (a[2] || 0)))[0];
+   return {
+     end, years: ys, map: ys.map(y => y.mood),
+-    card: { end, peak: Math.max(...years.map(y => y.stats.m)), left: years[years.length - 1].stats.m, big: allEv.filter(e => e[2] === 'big').slice(0, 5).map(e => e[0] + ' 歲：' + e[1]),
+-      best: best.age + ' 歲：' + (best.events.find(e => e[1] === 'big') || best.events[0])[0],
+-      worst: worst.age + ' 歲：' + (worst.events.find(e => e[1] === 'hit' || e[1] === 'end') || worst.events[0])[0] }
++    card: { end, peak: Math.max(...years.map(y => y.stats.m)), left: years[years.length - 1].stats.m, big,
++      best: best.age + ' 歲：' + top(best, 1)[0], worst: worst.age + ' 歲：' + top(worst, -1)[0] }
+   };
+ }
+ 
+@@ -187,10 +207,16 @@ function main() {
+   const D = W.load([...new Set([P.home, ...P.options.flatMap(o => o.phases.map(p => p.country))])]);
+   const nr = rng(seed0 * 7 + 3), used = new Set(), fam = P.family || {};
+   const sur = NM.TW_SUR[Math.floor(nr() * NM.TW_SUR.length)];
+-  const family = { __sur: sur, sp: NM.make('TW', fam.spouse_gender || 'F', nr, used), father: NM.make('TW', 'M', nr, used, sur), mother: NM.make('TW', 'F', nr, used) };
+-  (fam.kids || []).forEach((a, i) => { family['kid' + i] = NM.make('TW', nr() < 0.5 ? 'M' : 'F', nr, used, sur); });
+-  const out = { case: P.case, generated: new Date().toISOString().slice(0, 10), runs: N, start_age: P.age, kids: fam.kids || [],
+-    family: [['另一半', family.sp], ...(fam.kids || []).map((a, i) => [(fam.kids.length > 1 ? (i === 0 ? '小的' : '大的') : '小孩') + '（' + a + ' 歲）', family['kid' + i]]), ['爸爸', family.father], ['媽媽', family.mother]],
++  const sexMe = P.gender || 'M', sexSp = fam.spouse_gender || (sexMe === 'M' ? 'F' : 'M');
++  const family = { __sur: sur, sp: NM.make('TW', sexSp, nr, used), father: NM.make('TW', 'M', nr, used, sur), mother: NM.make('TW', 'F', nr, used) };
++  const kidSex = (fam.kids || []).map(() => (nr() < 0.5 ? 'M' : 'F'));
++  kidSex.forEach((g, i) => { family['kid' + i] = NM.make('TW', g, nr, used, sur); });
++  P.__kidSex = kidSex;
++  // 小孩的稱呼照年紀排：老大、老二、老三…（嚴審 F7）
++  const order = (fam.kids || []).map((a, i) => i).sort((x, y) => fam.kids[y] - fam.kids[x]);
++  const kidLabel = i => (fam.kids.length === 1 ? '小孩' : ['老大', '老二', '老三', '老四', '老五'][order.indexOf(i)] || '小孩');
++  const out = { case: P.case, generated: new Date().toISOString().slice(0, 10), runs: N, start_age: P.age, kids: fam.kids || [], gender: sexMe,
++    family: [['另一半', family.sp, sexSp], ...(fam.kids || []).map((a, i) => [kidLabel(i), family['kid' + i], kidSex[i]]), ['爸爸', family.father, 'M'], ['媽媽', family.mother, 'F']],
+     options: [] };
+   const all = [];
+   P.options.forEach((opt, oi) => {
+@@ -213,9 +239,13 @@ function main() {
+     const lifeMed = s.map(r => r.run.years.length).sort((a, b) => a - b)[s.length >> 1];
+     const pick = (q, ok) => { const lo = Math.round((q - 0.05) * (s.length - 1)), hi = Math.round((q + 0.05) * (s.length - 1)), mid = Math.round(q * (s.length - 1));
+       let best = null; for (let i = lo; i <= hi; i++) if (ok(s[i]) && (!best || Math.abs(i - mid) < Math.abs(best[0] - mid))) best = [i, s[i]];
+-      return (best ? best[1] : s[mid]).run; };
+-    const good = pick(0.8, r => r.run.years.length >= lifeMed), bad = pick(0.2, r => r.run.years.length <= good.years.length);
+-    [['good', good], ['bad', bad]].forEach(([k, run]) => { nameLife(run, family, used, nr); o[k] = summarize(run); });
++      const hit = best || [mid, s[mid]]; return { run: hit[1].run, pct: Math.round(hit[0] / (s.length - 1) * 100) }; };
++    const good = pick(0.8, r => r.run.years.length >= lifeMed), bad = pick(0.2, r => r.run.years.length <= good.run.years.length);
++    [['good', good], ['bad', bad]].forEach(([k, g]) => { nameLife(g.run, family, used, nr); o[k] = summarize(g.run); o[k].pct = g.pct; });
++    // 500 次的分布，給畫面寫「中位數」「活到 80 歲以上的有幾成」
++    const ends = o.runs.map(r => r.run.years[r.run.years.length - 1].age).sort((a, b) => a - b);
++    const lefts = o.runs.map(r => r.run.years[r.run.years.length - 1].stats.m).sort((a, b) => a - b);
++    o.dist = { medEnd: ends[ends.length >> 1], medLeft: Math.round(lefts[lefts.length >> 1]), over80: Math.round(ends.filter(a => a >= 80).length / ends.length * 100) };
+     o.median_score = Math.round(medians[medians.length - 1] * 100) / 100;
+     delete o.runs;
+   });
+diff --git a/engine/texts.js b/engine/texts.js
+index 9b0258b..9ddcd5a 100644
+--- a/engine/texts.js
++++ b/engine/texts.js
+@@ -14,6 +14,8 @@ module.exports = {
+     layoff: '公司調整組織，你的位子沒了，花了幾個月找新工作',
+     layoffRec: '景氣不好，公司裁員，你也在名單上',
+     newJob: '到新公司報到，主管是{boss}',
++    transfer: c => '調到' + c + '的辦公室，主管換成{boss}',
++    promote: t => '升上' + t,
+     raise: ['年底加薪比預期多', '考績拿到好成績，{boss}多給了一個月獎金', '{boss}把一個大案子交給你'],
+     pool: ['和{cw}趕專案趕到半夜', '{boss}在會議上誇你的報告', '{cw}請你喝咖啡，聊到想換工作', '跟{cw}為了排程吵了一架，隔天和好', '帶新人{cw}熟悉流程', '{boss}找你談明年的目標', '部門聚餐，{cw}喝醉了唱了三首歌', '出差三天，和{cw}跑了五家客戶', '{cw}結婚，你包了紅包', '{cw}離職，大家一起簽了卡片', '客戶臨時改需求，被{boss}念了一頓', '和{cw}一起拿下年度最大的案子', '{cw}生小孩，部門合送了一台推車', '在電梯裡遇到{boss}，聊了五分鐘家常', '年終尾牙抽到一台電風扇', '{cw}教你用新的報表系統', '開會開到忘記吃午餐', '跟{cw}午休去附近的麵店', '{boss}請病假，你代理了一個星期', '參加公司的教育訓練', '跟{cw}一起去拜訪新客戶，談得很順', '辦公室搬到新大樓', '{cw}在群組裡分享小孩的照片']
+   },
+@@ -22,9 +24,9 @@ module.exports = {
+     apart: ['跟{sp}每晚視訊，小孩搶著講話', '過年才全家團圓', '{kid}在電話裡說想你'],
+     kidYoung: ['{kid}學會騎腳踏車', '{kid}在幼兒園畫了一張全家福', '{kid}發燒請假兩天', '陪{kid}去公園玩溜滑梯', '{kid}掉了第一顆牙', '{kid}學游泳，第一次不用浮板'],
+     kidSchool: ['{kid}月考考得不錯', '{kid}迷上一部卡通', '{kid}在學校跟同學吵架，你被老師請去', '{kid}參加校外教學', '{kid}開始學鋼琴', '{kid}被選進籃球校隊', '{kid}帶同學回家玩', '陪{kid}做勞作做到很晚', '{kid}運動會跑了第二名', '{kid}說長大想當醫生'],
+-    kidTeen: ['{kid}開始有自己的心事，話變少了', '{kid}段考退步，你們談了一個晚上', '{kid}交了第一個男女朋友', '{kid}跟你吵著要買新手機', '{kid}參加營隊一個星期', '{kid}半夜還在打電動', '{kid}在社團表演，你去看了'],
++    kidTeen: ['{kid}開始有自己的心事，話變少了', '{kid}段考退步，你們談了一個晚上', '{kid}開始第一段戀情', '{kid}跟你吵著要買新手機', '{kid}參加營隊一個星期', '{kid}半夜還在打電動', '{kid}在社團表演，你去看了'],
+     kidAdult: ['{kid}找到第一份工作', '{kid}搬出去自己住', '{kid}帶{ks}回家吃飯', '{kid}出國旅行寄了明信片', '{kid}換工作，打電話來問你的意見', '{kid}週末回家，幫你修電腦'],
+-    gk: ['帶孫子{gk}去公園', '{gk}叫你一聲「阿公阿嬤」，你開心了一整天', '{gk}上小學了', '{gk}來家裡過暑假'],
++    gk: ['帶孫子{gk}去公園', '{gk}叫你一聲「{grand}」，你開心了一整天', '{gk}上小學了', '{gk}來家裡過暑假'],
+     parent: ['帶{pa}去吃喜歡的餐廳', '{pa}來家裡住了一個星期', '陪{pa}回老家走走', '幫{pa}換了一支新手機', '{pa}打電話來叮嚀天冷要加衣服', '陪{pa}去醫院回診'],
+     parentCare: '{pa}開始需要長期照顧，每個月多一筆開銷',
+     parentGone: '送走了{pa}，家裡安靜了很多',
+@@ -32,7 +34,9 @@ module.exports = {
+     friend: ['跟{fr}去爬山', '{fr}來家裡吃火鍋', '和{fr}聊到半夜', '{fr}的小孩結婚，你去喝了喜酒', '{fr}借你一本書', '跟{fr}一起去看球賽', '{fr}搬到別的城市，你去送行', '跟{fr}好久沒見，一見面就聊不停', '{fr}找你借錢，你幫了一點', '跟{fr}一起報名路跑'],
+     friendOld: ['和{fr}在公園下棋', '{fr}打電話來聊了一個鐘頭', '跟{fr}去喝早茶', '去醫院看{fr}', '和{fr}一起參加同學會', '{fr}送來一箱自己種的菜'],
+     friendGone: '老朋友{fr}過世了，你去送了最後一程',
+-    milestone: { 6: ['{kid}上小學了', ''], 12: ['{kid}小學畢業', 'big'], 15: ['{kid}國中畢業', ''], 18: ['{kid}考上大學', 'big'], 22: ['{kid}大學畢業', 'big'], 30: ['{kid}和{ks}結婚了', 'big'], 32: ['{kid}的小孩{gk}出生了', 'big'] }
++    milestone: { 6: ['{kid}上小學了', ''], 12: ['{kid}小學畢業', 'big'], 15: ['{kid}國中畢業', ''], 18: ['{kid}考上大學', 'big'], 22: ['{kid}大學畢業', 'big'] },
++    wed: '{kid}和{ks}結婚了',
++    baby: '{kid}的小孩{gk}出生了'
+   },
+   health: {
+     small: ['感冒拖了兩個星期', '腰痛去看了幾次復健', '睡不好，常常半夜醒來', '牙痛去補牙', '健康檢查有一項紅字', '扭到腳踝，休息了一個星期', '眼睛開始老花，配了一副眼鏡'],
+diff --git a/engine/world.js b/engine/world.js
+index a2dc2a4..9142234 100644
+--- a/engine/world.js
++++ b/engine/world.js
+@@ -123,13 +123,13 @@ function stepCountry(D, c, w, rnd) {
+   return c;
+ }
+ 
+-// 生命表：沒有性別就取男女平均
+-function deathP(D, iso, year, age) {
++// 生命表：照性別取；沒給性別才取男女平均（嚴審 2026-11-05：性別只定一次，壽命也讀它）
++function deathP(D, iso, year, age, sex) {
+   const y = String(Math.min(2100, Math.max(1950, year)));
+   const a = Math.min(100, age);
+   const m = D.life[iso + '|' + y + '|M'], f = D.life[iso + '|' + y + '|F'];
+   if (!m || !f) return 0.01;
+-  return (m[a] + f[a]) / 2;
++  return sex === 'M' ? m[a] : sex === 'F' ? f[a] : (m[a] + f[a]) / 2;
+ }
+ 
+ module.exports = { load, initCountry, stepWorld, stepCountry, deathP, tierOf };

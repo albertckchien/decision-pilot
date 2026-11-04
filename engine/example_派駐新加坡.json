@@ -12,8 +12,7 @@
       7,
       10
     ],
-    "parents_age": 70,
-    "spouse_gender": "F"
+    "parents_age": 70
   },
   "goals": [
     {
@@ -103,8 +102,11 @@
           "kind": "big",
           "effect": {
             "c": 12,
-            "income": 0.12
-          }
+            "income": 0.12,
+            "title": "處長"
+          },
+          "same_company": true,
+          "below_title": "處長"
         },
         {
           "text": "提前回台，升處長的保證沒了",
@@ -118,7 +120,9 @@
           "kind": "hit",
           "effect": {
             "c": -6
-          }
+          },
+          "same_company": true,
+          "below_title": "處長"
         }
       ]
     },
@@ -147,8 +151,10 @@
           "kind": "big",
           "effect": {
             "c": 12,
-            "income": 0.12
-          }
+            "income": 0.12,
+            "title": "處長"
+          },
+          "below_title": "處長"
         },
         {
           "text": "同事從新加坡回來升處長，變成你的主管",
@@ -161,7 +167,8 @@
           "kind": "hit",
           "effect": {
             "c": -5
-          }
+          },
+          "below_title": "處長"
         }
       ]
     }
@@ -174,5 +181,6 @@
     "協理",
     "副總經理"
   ],
-  "title_index": 2
+  "title_index": 2,
+  "gender": "M"
 }

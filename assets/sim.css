@@ -46,7 +46,7 @@
 .sim-map{display:grid;grid-template-columns:repeat(25,1fr);gap:2px;margin-top:.8rem}
 .sim-map span{aspect-ratio:1;background:var(--surface);transition:background-color .4s}
 .sim-maplab{font-size:.8rem;color:var(--muted);margin-top:.3rem;display:flex;justify-content:space-between;gap:.5rem}
-.sim-card{position:absolute;inset:0;z-index:5;background:var(--ink);color:#fff;padding:1.3rem;display:flex;flex-direction:column;gap:.7rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .6s,transform .6s cubic-bezier(.22,1,.36,1);overflow:auto}
+.sim-card{position:absolute;inset:0;background:var(--ink);color:#fff;padding:1.3rem;display:flex;flex-direction:column;gap:.7rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .6s,transform .6s cubic-bezier(.22,1,.36,1);overflow:auto}
 .sim-card.show{opacity:1;pointer-events:auto;transform:none}
 .sim-card h4{font-family:var(--font-display);font-size:1.4rem;margin:0}
 .sim-card .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr));gap:.5rem}
@@ -65,7 +65,6 @@
 /* 像素場景和個人資訊（用戶 2026-11-03：8-bit 風、資訊不要太少） */
 .sim-scene{height:auto;aspect-ratio:16/9;background:#b9c9ee}
 .sim-px{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
-.sim-place,.sim-age,.sim-pop{z-index:2}
 .sim-place{font-weight:500;outline:2px solid #111}
 .sim-pop{outline:2px solid #111;top:30%}
 .sim-profile{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin-top:.7rem;font-size:.86rem}
@@ -74,3 +73,17 @@
 .sim-profile dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.15rem .6rem}
 .sim-profile dt{color:var(--muted)}
 .sim-profile dd{margin:0}
+/* 嚴審 2026-11-05：說明、事件清單貼著場景、個人資訊可收起、字卡不蓋年紀、層級表 */
+:root{--z-label:2;--z-pop:3;--z-card:10}
+.sim-place,.sim-age{z-index:var(--z-label)}
+.sim-pop{z-index:var(--z-pop);top:auto;bottom:8%;transform:translateX(-50%)}
+.sim-pop.show{animation:sim-pop2 1.6s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes sim-pop2{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}18%{opacity:1;transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-6px)}}
+.sim-card{z-index:var(--z-card)}
+.sim-lead{font-size:.95rem;margin:.4rem 0 1rem;max-width:60rem}
+.sim-feed{height:16rem;margin-top:.6rem}
+.sim-pd{margin-top:.7rem}
+.sim-pd summary{cursor:pointer;font-size:.88rem;padding:.35rem 0;color:var(--muted)}
+.sim-card .dist{font-size:.85rem;color:#ccc;margin:0}
+@media(max-width:760px){.sim-feed{height:11rem}.sim-pop{font-size:.85rem}}
+@media(prefers-reduced-motion:reduce){.sim-pop.show{animation:none;opacity:1}}

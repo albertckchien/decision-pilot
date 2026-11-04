@@ -123,13 +123,13 @@ function stepCountry(D, c, w, rnd) {
   return c;
 }
 
-// 生命表：沒有性別就取男女平均
-function deathP(D, iso, year, age) {
+// 生命表：照性別取；沒給性別才取男女平均（嚴審 2026-11-05：性別只定一次，壽命也讀它）
+function deathP(D, iso, year, age, sex) {
   const y = String(Math.min(2100, Math.max(1950, year)));
   const a = Math.min(100, age);
   const m = D.life[iso + '|' + y + '|M'], f = D.life[iso + '|' + y + '|F'];
   if (!m || !f) return 0.01;
-  return (m[a] + f[a]) / 2;
+  return sex === 'M' ? m[a] : sex === 'F' ? f[a] : (m[a] + f[a]) / 2;
 }
 
 module.exports = { load, initCountry, stepWorld, stepCountry, deathP, tierOf };
