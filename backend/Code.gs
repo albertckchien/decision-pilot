@@ -1,5 +1,5 @@
 /**
- * 第三條路（讀書會試跑）後台。貼進 Google Apps Script，發布成網頁應用程式（執行身分：我；存取：所有人）。
+ * 擇路 Pathwise（讀書會試跑）後台。貼進 Google Apps Script，發布成網頁應用程式（執行身分：我；存取：所有人）。
  * Script Properties 要設：ROOT_FOLDER_ID（存資料的私人資料夾 ID）、INVITE（邀請碼）、OWNER_EMAIL（新件通知寄給誰）、SITE_URL（前台網址，結尾不要斜線）。
  * 每份一個資料夾 P01_xxxxxxxx，裡面的檔案名稱見 docs/部署說明.md「資料夾裡有什麼」。
  */
@@ -19,7 +19,7 @@ function doPost(e) {
     return out_({ ok: false, error: String(err && err.message || err) });
   }
 }
-function doGet() { return out_({ ok: true, hello: '第三條路試跑後台' }); }
+function doGet() { return out_({ ok: true, hello: '擇路試跑後台' }); }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function props_() { return PropertiesService.getScriptProperties(); }
 
@@ -57,7 +57,7 @@ function submit_(req) {
 
   p.setProperty('T_' + token, folder.getId());
   var owner = p.getProperty('OWNER_EMAIL');
-  if (owner) MailApp.sendEmail(owner, '【第三條路】新的一份：' + caseId, caseId + '（' + f.name + '）送出了。資料夾：' + folder.getUrl());
+  if (owner) MailApp.sendEmail(owner, '【擇路 Pathwise】新的一份：' + caseId, caseId + '（' + f.name + '）送出了。資料夾：' + folder.getUrl());
   return { ok: true, caseId: caseId, token: token };
 }
 
@@ -136,7 +136,7 @@ function notifyChanges() {
     var st = readJson_(folder, '狀態.json'); if (!st || !st.email) return;
     if (st.notified === st.stage || !words[st.stage]) return;
     var link = site + '/case.html?t=' + k.slice(2);
-    MailApp.sendEmail(st.email, '【第三條路】' + words[st.stage], (st.name || '你好') + '，\n\n' + words[st.stage] + '：\n' + link + '\n\n這個連結只給你，請不要轉給別人。\n\n第三條路（讀書會試跑）');
+    MailApp.sendEmail(st.email, '【擇路 Pathwise】' + words[st.stage], (st.name || '你好') + '，\n\n' + words[st.stage] + '：\n' + link + '\n\n這個連結只給你，請不要轉給別人。\n\n擇路 Pathwise（讀書會試跑）');
     st.notified = st.stage; writeJson_(folder, '狀態.json', st);
   });
 }
@@ -155,7 +155,7 @@ function readJson_(folder, name) { var s = read_(folder, name); try { return s ?
 function write_(folder, name, text) { var f = find_(folder, name); if (f) f.setContent(text); else folder.createFile(name, text, 'text/markdown'); }
 function writeJson_(folder, name, obj) { write_(folder, name, JSON.stringify(obj, null, 2)); }
 function setStage_(folder, stage, msg) { var st = readJson_(folder, '狀態.json') || {}; st.stage = stage; st.message = msg || ''; writeJson_(folder, '狀態.json', st); }
-function ping_(folder, what) { var o = props_().getProperty('OWNER_EMAIL'); if (o) MailApp.sendEmail(o, '【第三條路】' + folder.getName() + ' ' + what, folder.getUrl()); }
+function ping_(folder, what) { var o = props_().getProperty('OWNER_EMAIL'); if (o) MailApp.sendEmail(o, '【擇路 Pathwise】' + folder.getName() + ' ' + what, folder.getUrl()); }
 function table_(rows) {
   return '| 欄位 | 內容 |\n|---|---|\n' + rows.filter(function (r) { return r[1]; }).map(function (r) { return '| ' + r[0] + ' | ' + String(r[1]).replace(/\n/g, ' ').replace(/\|/g, '／') + ' |'; }).join('\n') + '\n';
 }

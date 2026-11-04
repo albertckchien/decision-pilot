@@ -110,3 +110,20 @@
 .sim-card .btns{margin-top:auto;display:flex;gap:.5rem;flex-wrap:wrap}
 .sim-card .btns .again{margin-top:0}
 .sim-card .review{background:transparent;color:#fff;border:1px solid #fff;padding:.5rem 1rem;cursor:pointer}
+/* 字級（2026-11-05 首頁嚴審）：讀的字至少 13px，事件和個人資訊用內文大小，排名移到場景下面 */
+.sim-stage h3{font-size:1.25rem}
+.sim-rank{font-size:.875rem;color:var(--muted);margin:.5rem 0 0}
+.sim-age small,.sim-maplab,.sim-card .row span{font-size:.85rem}
+.sim-feed li{font-size:1rem}
+.sim-profile{font-size:.95rem}
+.sim-bars{font-size:.9rem}
+.sim-pd summary{font-size:.95rem}
+.sim-card ul,.sim-card .dist{font-size:.95rem}
+.sim-note{font-size:.9rem}
+
+.sim-pd-btn{background:none;border:0;padding:.35rem 0;font:inherit;font-size:.95rem;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:.4rem}
+.sim-pd-btn::before{content:"";width:0;height:0;border-left:.35em solid currentColor;border-top:.3em solid transparent;border-bottom:.3em solid transparent;transition:transform .2s}
+.sim-pd-btn[aria-expanded=true]::before{transform:rotate(90deg)}
+.sim-pd-btn:hover{color:var(--ink)}
+.sim-profile[hidden]{display:none}
+.sim-feed:empty::before{content:"按「播放」開始，每一年發生的事會出現在這裡。";display:block;padding:.8rem .2rem;color:var(--muted);font-size:.95rem}

@@ -1,24 +1,28 @@
-/* 第三條路（試跑）共用樣式。方向：The printed annual（seed 1505810039），配色重抽成 Sheet and biro（用戶 2026-11-02：深藍配粉紅太醜）。
-   中文用 Noto Serif TC（標題）和 Noto Sans TC（內文）：抽到的 Gambarino / General Sans 沒有中文字。 */
+/* 擇路 Pathwise 共用樣式。配色 F2（用戶 2026-11-05 選）：深酒紅、香檳金當主色，奶白、淺膚、可可當輔助。
+   中文用 Noto Serif TC（標題）和 Noto Sans TC（內文）。 */
 :root {
-  --bg: #ffffff;
-  --surface: #f4f4f4;
-  --surface-2: #e8e8e8;
-  --ink: #111111;
-  --muted: #6b6b6b;
-  --accent: #1a4be0;
-  --accent-ink: #ffffff;
-  --accent-hover: #1239b0;
-  --field: #111111;
-  --field-2: #1d1d1d;
-  --field-ink: #f2f2f2;
-  --field-muted: #a8a8a8;
-  --line: #cfcfcf;
+  --bg: #FBF8F3;
+  --surface: #F5EEE8;
+  --surface-2: #EFE3DA;
+  --ink: #2B2125;
+  --muted: #6B5A5F;
+  --accent: #6E1A34;
+  --accent-ink: #FFFFFF;
+  --accent-hover: #561429;
+  --gold: #E2C27A;
+  --gold-ink: #2B2125;
+  --gold-hover: #D6B163;
+  --field: #6E1A34;
+  --field-2: #561429;
+  --field-ink: #FBF8F3;
+  --field-muted: #E8CFD5;
+  --cocoa: #3A2A2E;
+  --line: #DCCDC4;
 
   --font-display: "Noto Serif TC", "Songti TC", serif;
   --font-text: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
 
-  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --step-small: clamp(0.875rem, 0.85rem + 0.1vw, 0.9375rem);
   --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
   --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
   --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
@@ -61,26 +65,26 @@ p { max-width: 38em; }
 .wrap { padding-inline: var(--margin); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* 按鈕：一種形狀，方角，實心粉紅 */
+/* 按鈕：一種形狀，方角；淺底用酒紅，酒紅底用香檳金 */
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 3.25rem; padding: 0 1.6rem; background: var(--accent); color: var(--accent-ink); font-weight: 500; text-decoration: none; border: 0; cursor: pointer; transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) var(--ease-out); }
 .btn:hover { background: var(--accent-hover); }
 .btn:active { transform: scale(0.97); }
 .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
 .btn.quiet { background: var(--surface-2); color: var(--ink); }
-.btn.quiet:hover { background: #dcdcdc; }
+.btn.quiet:hover { background: #e6d6cb; }
+.btn.gold { background: var(--gold); color: var(--gold-ink); }
+.btn.gold:hover { background: var(--gold-hover); }
 .link { text-decoration: underline; text-underline-offset: 0.25em; text-decoration-thickness: 1px; transition: color var(--t-hover); }
 .link:hover { color: var(--accent); }
 
 /* 頁首：字標、幾個連結、一個動作 */
 .bar { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1.25rem var(--margin); }
 .wordmark { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; text-decoration: none; }
+.wm-en { font-family: var(--font-text); font-weight: 500; font-size: 0.62em; color: var(--muted); margin-left: 0.25em; }
 .bar nav { display: flex; gap: 1.5rem; font-size: var(--step-small); }
 .bar nav a { text-decoration: none; }
 .bar nav a:hover { text-decoration: underline; text-underline-offset: 0.25em; }
 
-/* 固定頁尾的求助訊息（用戶 2026-11-02 定：人人都看得到，不點名） */
-.helpline { background: var(--surface); padding: 2rem var(--margin); font-size: var(--step-small); }
-.helpline p { max-width: 60em; }
 
 /* 進場動畫：沒有 JS 時內容照樣看得到 */
 @media (prefers-reduced-motion: no-preference) {

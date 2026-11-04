@@ -1,6 +1,6 @@
-// 首頁：進場動畫、權重倒過來的小比較表。
+// 首頁：進場動畫、開頭那一格會動的人生、如果人生的播放器（讀範例情境 engine/example_out.json）。
 (function () {
-  // 進場：每個區塊進到畫面才出現一次
+  // 進場：每個區塊進到畫面才出現一次；沒有 JS 時內容照樣看得到
   var els = document.querySelectorAll('[data-reveal]');
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (es) {
@@ -11,37 +11,19 @@
     els.forEach(function (el) { el.classList.add('in'); });
   }
 
-  // 權重倒過來：點一個目標把它排第一，權重照順序 3、2、1
-  var names = ['事業', '家庭', '財務'];
-  var opts = ['全家外派', '留在台灣', '先談條件再簽'];
-  var scores = [[5, 2, 4], [2, 4, 5], [4, 4, 4]];
-  var order = [0, 1, 2];
-  var buttons = document.querySelectorAll('.goal');
-  var rows = document.querySelectorAll('.w-table tbody tr');
-  var heads = document.querySelectorAll('.w-table .g-h');
-  var verdict = document.querySelector('.w-verdict');
-  if (!buttons.length) return;
-
-  function render() {
-    var w = [0, 0, 0];
-    order.forEach(function (g, i) { w[g] = 3 - i; });
-    heads.forEach(function (h, g) { h.textContent = names[g] + '×' + w[g]; });
-    var totals = scores.map(function (s) { return s[0] * w[0] + s[1] * w[1] + s[2] * w[2]; });
-    var best = Math.max.apply(null, totals);
-    rows.forEach(function (r, i) {
-      r.querySelector('.tot').textContent = totals[i];
-      r.classList.toggle('win', totals[i] === best);
-    });
-    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.goal === order[0])); });
-    var winners = opts.filter(function (o, i) { return totals[i] === best; });
-    verdict.textContent = '照「' + order.map(function (g) { return names[g]; }).join('、') + '」的順序，「' + winners.join('」和「') + '」最高。';
+  // 開頭大字裡那一格：一家人在城市裡走，慢慢變老（每 1.2 秒一年）
+  var slot = document.querySelector('.slot-px');
+  if (slot && window.PixelScene) {
+    var sc = window.PixelScene(slot), age = 38, reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var draw = function () { sc.set({ city: age < 63 ? '台灣' : '台灣', age: age, spouse: true, spouseFemale: true, kids: [{ age: age - 31, female: true }, { age: age - 34, female: false }] }); };
+    draw();
+    if (!reduce) setInterval(function () { age = age >= 88 ? 38 : age + 1; draw(); }, 1200);
   }
-  buttons.forEach(function (b) {
-    b.addEventListener('click', function () {
-      var g = +b.dataset.goal;
-      order = [g].concat(order.filter(function (x) { return x !== g; }));
-      render();
-    });
-  });
-  render();
+
+  // 如果人生：範例情境
+  var root = document.getElementById('sim-root');
+  if (root && window.renderSim && window.fetch) {
+    fetch('engine/example_out.json').then(function (r) { return r.json(); }).then(function (d) { window.renderSim(root, d); })
+      .catch(function () { root.insertAdjacentHTML('beforeend', '<p>範例模擬暫時載入不了，重新整理一次試試。</p>'); });
+  }
 })();

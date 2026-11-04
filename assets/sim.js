@@ -43,13 +43,17 @@ window.renderSim = function (root, data) {
     if (scenes[k]) scenes[k].stop();
     var rank = L.pct != null ? '在 ' + data.runs + ' 次裡排第 ' + L.pct + ' 百分位' : (k === 'good' ? '不是最好的那次' : '不是最慘的那次');
     // 順序（嚴審 F9）：場景、今年的事、數值，個人資訊收在可以展開的區塊，手機上預設收起
-    st.innerHTML = '<h3><span class="' + (k === 'good' ? 'sim-good-t' : '') + '">' + (k === 'good' ? '運氣好的那一段' : '運氣差的那一段') + '</span><small>' + rank + '</small></h3>' +
+    st.innerHTML = '<h3><span class="' + (k === 'good' ? 'sim-good-t' : '') + '">' + (k === 'good' ? '運氣好的那一段' : '運氣差的那一段') + '</span></h3>' +
       '<div class="sim-scene"><canvas class="sim-px" aria-hidden="true"></canvas><span class="sim-place">' + esc(y0.city) + '</span><div class="sim-age">' + y0.age + '<small>' + y0.year + '</small></div><div class="sim-pop"></div></div>' +
+      '<p class="sim-rank">' + rank + '</p>' +
       '<div class="sim-feedwrap"><ol class="sim-feed" aria-live="off" tabindex="0" aria-label="每一年發生的事，可以往下捲回去看"></ol><button class="sim-latest" hidden>回到最新</button></div>' +
       '<div class="sim-bars"><span>存款</span><div class="sim-bar money"><i></i></div><b class="v-m"></b><span>健康</span><div class="sim-bar"><i></i></div><b class="v-h"></b><span>家庭</span><div class="sim-bar"><i></i></div><b class="v-f"></b><span>事業</span><div class="sim-bar"><i></i></div><b class="v-c"></b></div>' +
-      '<details class="sim-pd"' + (mobile ? '' : ' open') + '><summary>你和身邊的人</summary><div class="sim-profile">' + profileHtml(y0) + '</div></details>' +
+      // 收起來的時候用 hidden，不用 <details>：Chrome 收起的 details 內容還佔版面位置，量起來會錯
+      '<div class="sim-pd"><button type="button" class="sim-pd-btn" aria-expanded="' + (!mobile) + '">你和身邊的人</button><div class="sim-profile"' + (mobile ? ' hidden' : '') + '>' + profileHtml(y0) + '</div></div>' +
       '<div class="sim-map">' + L.map.map(function (v, i) { return '<span role="button" tabindex="-1" data-i="' + i + '" aria-label="' + L.years[i].age + ' 歲"></span>'; }).join('') + '</div><div class="sim-maplab"><span>' + y0.age + ' 歲</span><span>人生地圖：一格一年，點一格可以看那年的事。看那年好事和壞事的分量：藍色是好事比較重，越深越好；灰黑色是壞事比較重，越黑越難；淺灰是平常、或好壞剛好抵銷的一年</span><span>' + L.end + ' 歲</span></div><div class="sim-card"></div>';
     st._peak = Math.max(1, L.card.peak);
+    var pb = st.querySelector('.sim-pd-btn'), pf = st.querySelector('.sim-profile');
+    pb.onclick = function () { var open = pf.hidden; pf.hidden = !open; pb.setAttribute('aria-expanded', String(open)); };
     // 回看（用戶 2026-11-05：快進時想翻某個歲數前後的事）：清單保留每一年，往下捲就是更早的；點人生地圖的一格跳到那年
     var f = st.querySelector('.sim-feed'), latest = st.querySelector('.sim-latest');
     f.addEventListener('scroll', function () { latest.hidden = f.scrollTop < 8; });

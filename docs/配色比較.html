@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>配色比較｜第三批</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:"Noto Sans TC",sans-serif;background:#f2f2f2;color:#222;line-height:1.6}
+  .wrap{max-width:1200px;margin:0 auto;padding:24px 16px 64px}
+  h1.top{font-size:1.4rem;margin:8px 0 4px} .note{color:#555;margin:0 0 28px}
+  .set{margin-bottom:56px;border-radius:14px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.08);background:var(--bg)}
+  .label{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid #e5e5e5}
+  .label b{font-size:1.1rem} .sw{display:flex;gap:8px;flex-wrap:wrap}
+  .sw span{display:flex;align-items:center;gap:6px;font-size:.8rem;color:#444}
+  .sw i{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.08);display:inline-block}
+  /* 範例頁 */
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:var(--bg)}
+  .logo{font-family:"Noto Serif TC",serif;font-weight:700;font-size:1.25rem;color:var(--p1)}
+  .menu{display:flex;gap:22px;font-size:.9rem;color:var(--ink)} .menu span:hover{color:var(--p1)}
+  .btn{display:inline-block;border:0;border-radius:999px;padding:.7rem 1.4rem;font:inherit;font-weight:700;cursor:pointer}
+  .b1{background:var(--p2);color:var(--on2)} .b2{background:transparent;color:var(--p1);box-shadow:inset 0 0 0 2px var(--p1)}
+  .small{padding:.45rem 1rem;font-size:.85rem}
+  .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:32px;align-items:center;padding:36px 28px 44px;background:var(--bg)}
+  .hero h2{font-family:"Noto Serif TC",serif;font-size:clamp(1.9rem,1rem+3vw,3rem);line-height:1.25;margin:0 0 14px;color:var(--ink)}
+  .hero h2 em{font-style:normal;color:var(--p1)}
+  .hero p{font-size:1.08rem;margin:0 0 22px;color:var(--ink2);max-width:28em}
+  .cta{display:flex;gap:12px;flex-wrap:wrap} .trust{margin-top:18px;font-size:.85rem;color:var(--ink2)}
+  .mock{background:var(--s2);border-radius:16px;padding:18px;display:grid;gap:10px}
+  .mock .row{background:#fff;border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;font-size:.92rem;color:var(--ink)}
+  .mock .row.hi{background:var(--p1);color:#fff} .mock small{color:var(--ink2)} .mock .row.hi small{color:rgba(255,255,255,.8)}
+  .band{background:var(--s1);padding:34px 28px}
+  .band h3{font-family:"Noto Serif TC",serif;font-size:1.5rem;margin:0 0 18px;color:var(--ink)}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:#fff;border-radius:14px;padding:18px;border-top:4px solid var(--p1)}
+  .card .tag{display:inline-block;font-size:.78rem;padding:.15rem .6rem;border-radius:999px;background:var(--s2);color:var(--p1);margin-bottom:8px;font-weight:700}
+  .card h4{margin:0 0 6px;font-size:1.08rem;color:var(--ink)} .card p{margin:0;font-size:.95rem;color:var(--ink2)}
+  .price{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:34px 28px;background:var(--bg)}
+  .plan{border-radius:14px;padding:20px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+  .plan.best{background:var(--p1);color:#fff} .plan b{font-size:1.6rem;display:block;margin:6px 0}
+  .plan.best .btn{background:var(--p2);color:var(--on2)}
+  .foot{padding:18px 28px;background:var(--ink);color:rgba(255,255,255,.78);font-size:.82rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  @media(max-width:760px){.hero,.cards,.price{grid-template-columns:1fr}.menu{display:none}.nav,.hero,.band,.price,.foot{padding-left:16px;padding-right:16px}}
+  /* 三組 */
+  .F1{--p1:#8C1D40;--p2:#D9A441;--on2:#2B2125;--bg:#FFFFFF;--s1:#F5ECE6;--s2:#F5ECE6;--ink:#2B2B2B;--ink2:#5b5558}
+  .F2{--p1:#6E1A34;--p2:#E2C27A;--on2:#2B2125;--bg:#FBF8F3;--s1:#EFE3DA;--s2:#EFE3DA;--ink:#2B2125;--ink2:#5b5558}
+  .F3{--p1:#8C1D40;--p2:#FF6B5A;--on2:#fff;--bg:#FFFAF7;--s1:#FBE4DF;--s2:#FBE4DF;--ink:#2F3437;--ink2:#5b5558}
+  .G1{--p1:#2F3437;--p2:#FF6B5A;--on2:#fff;--bg:#FFFDF8;--s1:#FFF1D6;--s2:#FFF1D6;--ink:#23272A;--ink2:#5b5558}
+  .G2{--p1:#2F3437;--p2:#8C1D40;--on2:#fff;--bg:#FFFFFF;--s1:#F5ECE6;--s2:#F5ECE6;--ink:#23272A;--ink2:#5b5558}
+  .G3{--p1:#36393B;--p2:#F2735E;--on2:#fff;--bg:#FBF7F1;--s1:#F3E9DC;--s2:#F3E9DC;--ink:#2A2C2E;--ink2:#5b5558}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="top">配色比較：第三批（從 F 酒紅＋暖金、G 炭灰＋珊瑚延伸）</h1>
+  <p class="note">每組都套在同一個範例首頁上。網站名稱和文字都還是暫時的，只看顏色的感覺。手機上會自動變成單欄。</p>
+
+  <!-- 同一份範例內容，三組各一次 -->
+  <template id="page">
+    <div class="nav"><span class="logo">擇路 <small style="font-family:Noto Sans TC;font-weight:500;font-size:.75rem;opacity:.7">Pathwise</small></span><span class="menu"><span>怎麼運作</span><span>報告長什麼樣</span><span>如果人生</span><span>費用</span></span><button class="btn b1 small">開始</button></div>
+    <div class="hero">
+      <div>
+        <h2>卡在兩個選擇之間？<br><em>先把路看清楚</em></h2>
+        <p>寫下你卡住的事。我們把每個選項的代價、機會和風險比清楚，再讓你看每條路走下去，運氣好和運氣差的樣子。</p>
+        <div class="cta"><button class="btn b1">寫下我的處境</button><button class="btn b2">看範例報告</button></div>
+        <div class="trust">200 國的真實資料・每份報告過 4 道檢查・不推銷任何產品</div>
+      </div>
+      <div class="mock">
+        <div class="row"><span>留在原公司</span><small>總分 19</small></div>
+        <div class="row hi"><span>先談條件再決定</span><small>總分 24・建議</small></div>
+        <div class="row"><span>接新工作</span><small>總分 21</small></div>
+      </div>
+    </div>
+    <div class="band">
+      <h3>這幾句話，你是不是也說過？</h3>
+      <div class="cards">
+        <div class="card"><span class="tag">走還是留</span><h4>「offer 來了，可是年終還沒發」</h4><p>現在走，損失看得到；不走，機會可能不會再來。</p></div>
+        <div class="card"><span class="tag">擴大還是守住</span><h4>「要不要開第二家店？」</h4><p>生意不錯，但錢和人都只夠撐一邊。</p></div>
+        <div class="card"><span class="tag">人和交棒</span><h4>「交給孩子，老員工不服」</h4><p>家裡和公司，兩邊都不想失去。</p></div>
+      </div>
+    </div>
+    <div class="price">
+      <div class="plan"><span>概述報告</span><b>NT$ ○○</b><p>先看懂自己卡在哪裡</p><button class="btn b2 small">選這個</button></div>
+      <div class="plan best"><span>分析報告</span><b>NT$ ○○</b><p>比清楚每條路，給出建議</p><button class="btn small">選這個</button></div>
+      <div class="plan"><span>完整報告</span><b>NT$ ○○</b><p>再加執行計畫和停損點</p><button class="btn b2 small">選這個</button></div>
+    </div>
+    <div class="foot"><span>擇路 Pathwise（範例）</span><span>隱私說明・照片來源・聯絡我們</span></div>
+  </template>
+
+  <section class="set F1"><div class="label"><b>F1　酒紅＋暖金＋石墨字（F 的現代版）</b><div class="sw"><span><i style="background:#8C1D40"></i>主色 #8C1D40</span><span><i style="background:#D9A441"></i>強調 #D9A441</span><span><i style="background:#FFFFFF"></i>底色 #FFFFFF</span><span><i style="background:#F5ECE6"></i>輔助 #F5ECE6</span><span><i style="background:#2B2B2B"></i>文字 #2B2B2B</span></div></div><div class="slot"></div></section>
+  <section class="set F2"><div class="label"><b>F2　深酒紅＋香檳金（更沉穩）</b><div class="sw"><span><i style="background:#6E1A34"></i>主色 #6E1A34</span><span><i style="background:#E2C27A"></i>強調 #E2C27A</span><span><i style="background:#FBF8F3"></i>底色 #FBF8F3</span><span><i style="background:#EFE3DA"></i>輔助 #EFE3DA</span><span><i style="background:#2B2125"></i>文字 #2B2125</span></div></div><div class="slot"></div></section>
+  <section class="set F3"><div class="label"><b>F3　酒紅＋珊瑚（F 和 G 混在一起）</b><div class="sw"><span><i style="background:#8C1D40"></i>主色 #8C1D40</span><span><i style="background:#FF6B5A"></i>強調 #FF6B5A</span><span><i style="background:#FFFAF7"></i>底色 #FFFAF7</span><span><i style="background:#FBE4DF"></i>輔助 #FBE4DF</span><span><i style="background:#2F3437"></i>文字 #2F3437</span></div></div><div class="slot"></div></section>
+  <section class="set G1"><div class="label"><b>G1　炭灰＋珊瑚＋奶油黃（G 原版加暖底）</b><div class="sw"><span><i style="background:#2F3437"></i>主色 #2F3437</span><span><i style="background:#FF6B5A"></i>強調 #FF6B5A</span><span><i style="background:#FFFDF8"></i>底色 #FFFDF8</span><span><i style="background:#FFF1D6"></i>輔助 #FFF1D6</span><span><i style="background:#23272A"></i>文字 #23272A</span></div></div><div class="slot"></div></section>
+  <section class="set G2"><div class="label"><b>G2　炭灰＋酒紅＋暖金（G 和 F 混在一起）</b><div class="sw"><span><i style="background:#2F3437"></i>主色 #2F3437</span><span><i style="background:#8C1D40"></i>強調 #8C1D40</span><span><i style="background:#FFFFFF"></i>底色 #FFFFFF</span><span><i style="background:#F5ECE6"></i>輔助 #F5ECE6</span><span><i style="background:#23272A"></i>文字 #23272A</span></div></div><div class="slot"></div></section>
+  <section class="set G3"><div class="label"><b>G3　石墨＋鮭魚橘＋沙色（G 的柔和版）</b><div class="sw"><span><i style="background:#36393B"></i>主色 #36393B</span><span><i style="background:#F2735E"></i>強調 #F2735E</span><span><i style="background:#FBF7F1"></i>底色 #FBF7F1</span><span><i style="background:#F3E9DC"></i>輔助 #F3E9DC</span><span><i style="background:#2A2C2E"></i>文字 #2A2C2E</span></div></div><div class="slot"></div></section>
+</div>
+<script>
+  var t = document.getElementById('page');
+  document.querySelectorAll('.slot').forEach(function (s) { s.appendChild(t.content.cloneNode(true)); });
+</script>
+</body>
+</html>

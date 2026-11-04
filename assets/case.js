@@ -49,7 +49,7 @@
     if (r.stage === 'received') h += '<div class="card"><h2 class="head">收到了，謝謝你</h2><p>我們會先把你寫的整理成一張問題卡，好了會寄 Email 通知你回到這一頁確認。這個連結請收好，之後都從這裡看進度。</p></div>';
     if (r.stage === 'card') h += cardHtml(r);
     if (r.stage === 'questions') h += questionsHtml(r);
-    if (r.stage === 'making') h += '<div class="card"><h2 class="head">報告製作中</h2><p>資料都齊了。我們正在比較你的選項、找第三條路、跑人生模擬，好了會寄 Email 通知你。</p></div>';
+    if (r.stage === 'making') h += '<div class="card"><h2 class="head">報告製作中</h2><p>資料都齊了。我們正在比較你的選項、找另一條路、跑人生模擬，好了會寄 Email 通知你。</p></div>';
     if (r.stage === 'declined') h += '<div class="card"><h2 class="head">這次沒辦法製作</h2><p>' + esc(r.declineReason || '這份描述有些內容超出我們報告能處理的範圍，所以這次不製作。') + '</p></div>';
     if (r.stage === 'done') h += reportHtml(r);
     main.innerHTML = h;
@@ -72,7 +72,7 @@
   }
 
   function reportHtml(r) {
-    var h = '<div class="card"><h2 class="head">你的報告好了</h2><p>先看第 1 章的結論，再看比較表和第三條路。看完請花 3 分鐘填最下面的回饋。</p><div class="actions">' +
+    var h = '<div class="card"><h2 class="head">你的報告好了</h2><p>先看第 1 章的結論，再看比較表和另一條路。看完請花 3 分鐘填最下面的回饋。</p><div class="actions">' +
       (r.downloads || []).map(function (d) { return '<button class="btn quiet" data-dl="' + esc(d) + '">下載 ' + esc(d) + '</button>'; }).join('') + '</div></div>';
     if (r.pilotNote) h += '<div class="notice"><p>' + esc(r.pilotNote) + '</p></div>';
     h += '<article class="card md report">' + md(r.report) + '</article>';
@@ -93,7 +93,7 @@
     }
     return '<section class="card" aria-labelledby="fb-h"><h2 class="head" id="fb-h">看完了，跟我們說說</h2><div class="fields">' +
       pick('before', '看報告之前，你比較想選哪個？', ['A', 'B', '還沒想法', '其他']) +
-      pick('after', '看完之後，你現在想選哪個？', ['A', 'B', '報告提的第三條路', '還沒想法', '其他']) +
+      pick('after', '看完之後，你現在想選哪個？', ['A', 'B', '報告提的另一條路', '還沒想法', '其他']) +
       scale('accurate', '報告把你的處境寫得準不準？（1 很不準，5 很準）') +
       '<div class="field"><label for="fb-wrong">有沒有寫錯的事實？寫在哪裡？</label><textarea id="fb-wrong" class="short"></textarea></div>' +
       scale('useful', '整份報告對你做決定有沒有用？') +
