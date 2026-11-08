@@ -11,15 +11,6 @@
     els.forEach(function (el) { el.classList.add('in'); });
   }
 
-  // 開頭大字裡那一格：一家人在城市裡走，慢慢變老（每 1.2 秒一年）
-  var slot = document.querySelector('.slot-px');
-  if (slot && window.PixelScene) {
-    var sc = window.PixelScene(slot), age = 38, reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var draw = function () { sc.set({ city: age < 63 ? '台灣' : '台灣', age: age, spouse: true, spouseFemale: true, kids: [{ age: age - 31, female: true }, { age: age - 34, female: false }] }); };
-    draw();
-    if (!reduce) setInterval(function () { age = age >= 88 ? 38 : age + 1; draw(); }, 1200);
-  }
-
   // 如果人生：範例情境
   var root = document.getElementById('sim-root');
   if (root && window.renderSim && window.fetch) {

@@ -60,7 +60,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing:
 .lead { font-size: var(--step-lead); line-height: 1.5; }
 .small { font-size: var(--step-small); line-height: 1.5; }
 .muted { color: var(--muted); }
-p { max-width: 38em; }
+p { max-width: 38em; text-wrap: pretty; }  /* 照實際寬度斷行，避免最後一行只剩一兩個字 */
 .nums { font-variant-numeric: tabular-nums; }
 .wrap { padding-inline: var(--margin); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
