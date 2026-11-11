@@ -32,9 +32,18 @@ function submit_(req) {
   if (!f.name || !f.email || !f.story) throw new Error('稱呼、Email 和描述都要填');
   if (String(f.story).length > 20000) throw new Error('描述太長了，請縮到 2 萬字以內');
 
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  var n;
-  try { n = Number(p.getProperty('COUNTER') || 0) + 1; p.setProperty('COUNTER', String(n)); } finally { lock.releaseLock(); }
+  var c = createCase_(f, null, false);
+  return { ok: true, caseId: c.caseId, token: c.token };
+}
+
+// 建一份案件資料夾（讀書會表單和初階報告升級共用）。up：升級時的初階資料；locked：呼叫的人已經拿著 script lock
+function createCase_(f, up, locked) {
+  var p = props_(), n;
+  if (locked) { n = Number(p.getProperty('COUNTER') || 0) + 1; p.setProperty('COUNTER', String(n)); }
+  else {
+    var lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try { n = Number(p.getProperty('COUNTER') || 0) + 1; p.setProperty('COUNTER', String(n)); } finally { lock.releaseLock(); }
+  }
   var caseId = 'P' + ('0' + n).slice(-2);
   var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8);
   var root = DriveApp.getFolderById(p.getProperty('ROOT_FOLDER_ID'));
@@ -42,7 +51,7 @@ function submit_(req) {
   folder.createFolder('附件'); folder.createFolder('交付');
   var comp = folder.createFolder('公司調查區');
 
-  write_(folder, '00_用戶描述.md', '# 用戶寫的描述（原文）\n\n## 你卡在哪裡\n\n' + f.story + '\n\n## 多久內要決定\n\n' + (f.deadline || '') + '\n\n## 想要哪一種報告\n\n' + (f.kind || '') + '\n');
+  write_(folder, '00_用戶描述.md', '# 用戶寫的描述（原文）\n\n## 你卡在哪裡\n\n' + f.story + '\n\n## 多久內要決定\n\n' + (f.deadline || '') + '\n\n## 想要哪一種報告\n\n' + (f.kind || '') + '\n' + (f.links ? '\n## 雲端連結（大檔案）\n\n' + f.links + '\n' : ''));
   write_(folder, '個人檔案.md', '# 個人檔案\n\n' + table_([
     ['年齡', f.age], ['所在國家和城市', f.place], ['角色', f.role], ['公司名稱', f.company], ['公司官網', f.website], ['職稱', f.title], ['產業', f.industry],
     ['家庭狀況', (f.family || []).join('、')], ['人生目標第一名', f.goal1], ['人生目標第二名', f.goal2], ['人生目標第三名', f.goal3],
@@ -53,12 +62,21 @@ function submit_(req) {
   ]));
   write_(folder, '聯絡.md', '# 聯絡（只給 Albert，不給任何 AI 步驟）\n\n' + table_([['稱呼', f.name], ['Email', f.email], ['LINE', f.line]]));
   write_(comp, '公司.md', '# 公司調查的輸入\n\n' + table_([['公司名稱', f.company], ['公司官網', f.website], ['產業', f.industry]]));
-  writeJson_(folder, '狀態.json', { stage: 'received', message: '', notified: 'received', email: f.email, name: f.name, createdAt: new Date().toISOString() });
+  var st = { stage: 'received', message: '', notified: 'received', email: f.email, name: f.name, createdAt: new Date().toISOString() };
+  if (up) {
+    // 從初階報告升級：問題卡用戶已經在初階流程看過、改過，不再走確認問題卡那一步
+    write_(folder, '問題卡.md', up.cardMd);
+    writeJson_(folder, '00_初階補題.json', { card: up.card, answers: up.answers, profile: up.profile });
+    write_(folder, '00_初階報告.md', up.report || '');
+    st.stage = 'making'; st.notified = 'making'; st.message = '收到了，報告製作中。如果還有要問你的，會寄信請你回來回答。';
+    st.source = '初階報告升級'; st.account = f.email; st.kind = f.kind; st.points = up.points;
+  }
+  writeJson_(folder, '狀態.json', st);
 
   p.setProperty('T_' + token, folder.getId());
   var owner = p.getProperty('OWNER_EMAIL');
-  if (owner) MailApp.sendEmail(owner, '【擇路 Pathwise】新的一份：' + caseId, caseId + '（' + f.name + '）送出了。資料夾：' + folder.getUrl());
-  return { ok: true, caseId: caseId, token: token };
+  if (owner) MailApp.sendEmail(owner, '【擇路 Pathwise】新的一份：' + caseId + (up ? '（升級：' + f.kind + '）' : ''), caseId + '（' + f.name + '）送出了。資料夾：' + folder.getUrl());
+  return { caseId: caseId, token: token, folder: folder };
 }
 
 function upload_(req) {

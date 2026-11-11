@@ -66,3 +66,4 @@ button.link { background: none; border: 0; padding: 0; color: inherit; font: inh
 .prefilled[open] summary { margin-bottom: 1.5rem; }
 .prefilled .field + .field { margin-top: 1.5rem; }
 .choices .nope { color: var(--muted); }
+.step > .err { color: #b3261e; margin-top: 1rem; }

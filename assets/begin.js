@@ -263,6 +263,8 @@
       if (cp === '有' || cp === '沒有') a.counterparty = cp === '有';
       if (v1('when')) a.decideWithinMonths = Number(v1('when'));
       if (v1('habit') && v1('habit') !== '看情況') a.habit = v1('habit');
+      var FAML = { kids: '有小孩要照顧', elder: '要照顧長輩', debt: '房貸或大筆負債', spouse: '另一半的工作綁在這裡', health: '自己或家人的健康' };
+      S.lastAnswers = a; S.lastProfile = p; S.famLabels = fam.map(function (x) { return FAML[x]; });
       call(this, 'overview', { card: S.card, answers: a, profile: p }).then(function (r) {
         if (r.notReady) { view.innerHTML = '<div class="card"><p>' + esc(r.text) + '</p></div>'; return; }
         S.points = r.points; report(r.report);
@@ -271,12 +273,108 @@
   }
 
   // ---------- 5. 初階報告 ----------
+  // 升級的點數照 intake_form.md 點數表（概述升分析 40、概述升完整 90）；後台 Account.gs 的 UPGRADE 要一致
+  var UPGRADE = [['分析報告', 40, '比較至少三個選項、反過來想、寫出什麼情況下該改變主意，也會試著找一條你可能沒想過的路（找不到站得住的會照實說）。約 5～6 頁。'],
+                 ['完整報告', 90, '分析報告的內容，再加上執行計畫和檢查點。約 10 頁。']];
   function report(text) {
     step(5); head();
+    S.reportText = text;
     view.innerHTML = '<article class="card md">' + md(text) + '</article>' +
-      '<div class="card"><h2>想知道該選哪一個？</h2><p>分析報告會比較至少三個選項、反過來想、寫出什麼情況下該改變主意，也會試著找一條你可能沒想過的路（找不到站得住的會照實說）。分析報告 50 點、完整報告 100 點。</p>' +
-      '<p class="small">付費版還在準備，開放時會寄信到你註冊的信箱。</p><div class="actions"><button class="btn quiet" id="print">存成 PDF 或列印</button></div></div>';
+      '<div class="card"><h2>想知道該選哪一個？</h2><p>初階報告只告訴你準備好了沒、最大的風險、先確認什麼。要比較選項、知道該選哪一個，可以升級：</p>' +
+      UPGRADE.map(function (u) { return '<p><strong>' + u[0] + '：' + u[1] + ' 點</strong>　' + esc(u[2]) + '</p>'; }).join('') +
+      '<p class="small">你現在有 ' + S.points + ' 點。</p>' +
+      '<div class="actions">' + UPGRADE.map(function (u, i) { return '<button class="btn' + (i ? ' quiet' : '') + '" data-up="' + i + '">升級成' + u[0] + '（' + u[1] + ' 點）</button>'; }).join('') +
+      '<button class="btn quiet" id="print">存成 PDF 或列印</button></div></div>';
     document.getElementById('print').onclick = function () { window.print(); };
+    [].forEach.call(view.querySelectorAll('[data-up]'), function (b) { b.onclick = function () { upgrade(UPGRADE[Number(b.dataset.up)]); }; });
+  }
+
+  // ---------- 6. 升級：補幾個報告要用的欄位、確認扣點 ----------
+  var AGES = ['25 以下', '25–29', '30–34', '35–39', '40–44', '45–49', '50–54', '55–59', '60 以上'];
+  var ROLES = ['上班族', '高階主管', '老闆或創業者', '自由工作者', '待業', '學生', '退休'];
+  function upgrade(u) {
+    step(4);
+    var enough = S.points >= u[1];
+    var t = function (id, label, hint, req) { return field('u-' + id, esc(label) + (req ? '' : '<span class="opt">（選填）</span>'), '<input type="text" id="u-' + id + '">', hint); };
+    var r = function (id, label, opts, req) { return radios('u-' + id, esc(label) + (req ? '' : '<span class="opt">（選填）</span>'), opts.map(function (o) { return [o, o]; })); };
+    var h = t('name', '稱呼', '暱稱就好，報告裡不會出現你的全名', true) +
+      field('u-age', '年齡', sel('u-age', AGES.map(function (x) { return [x, x]; }), '請選擇')) +
+      t('place', '所在國家和城市', '例如「台灣 台北」', true) +
+      r('role', '角色', ROLES, true) +
+      t('industry', '產業', '例如「醫療器材」「餐飲」「軟體」', true) +
+      t('company', '公司名稱', '我們會上網查這家公司的公開資訊，讓報告更準') +
+      t('website', '公司官網', '網址，例如 https://example.com') +
+      t('title', '職稱') +
+      r('risk', '能承受多少風險', ['低', '中', '高'], true) +
+      field('u-edge', '你有什麼別人比較少有的<span class="opt">（選填）</span>', '<textarea id="u-edge" class="short"></textarea>', '經驗、人脈、資料、資源，列 1～3 樣') +
+      field('u-two', '你同時懂哪兩邊<span class="opt">（選填）</span>', '<textarea id="u-two" class="short"></textarea>', '例如兩個國家、兩個產業、兩種人；沒有就空著') +
+      '<div id="u-biz" hidden>' + r('years', '公司成立幾年', ['不到 3 年', '3–10 年', '10 年以上']) +
+      r('revenue', '年營收級距', ['不想說', '1,000 萬以下', '1,000 萬–5,000 萬', '5,000 萬–2 億', '2 億–10 億', '10 億以上']) +
+      r('profit', '現在有沒有賺錢', ['有', '打平', '還在虧']) + r('b2b', '客戶主要是企業還是個人', ['企業', '個人', '都有']) +
+      r('familyBiz', '是不是家族企業', ['是', '不是']) + '</div>' +
+      t('line', 'LINE ID', '比較急的追問會用 LINE 問你') +
+      field('u-files', '附件<span class="opt">（選填）</span>', '<input type="file" id="u-files" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.heic,.webp,.txt,.md"><ul class="filelist" id="u-filelist"></ul>',
+        '合約、offer、財報、企劃書都可以。最多 3 個、每個 8MB 以內。上傳前請先遮掉身分證字號、帳號、別人的全名。') +
+      field('u-links', '比較大的檔案，貼雲端連結<span class="opt">（選填）</span>', '<textarea id="u-links" class="short"></textarea>', 'Google 雲端硬碟或 Dropbox 的分享連結，權限設成「知道連結的人可以檢視」，一行一個');
+    view.innerHTML = '<section class="step"><h2 class="head" tabindex="-1">升級成' + u[0] + '</h2>' +
+      '<div class="card"><p><strong>你卡在</strong>：' + esc(S.card['要決定的事']) + '</p><p class="small">問題卡、補題的答案和初階報告會一起帶過去，不用重填。下面是' + u[0] + '還需要的幾個基本資料。</p></div>' +
+      '<div class="fields">' + h + '</div>' +
+      '<div class="notice"><p><strong>確認後扣 ' + u[1] + ' 點</strong>（你現在有 ' + S.points + ' 點）。報告好了會寄信到 ' + esc(S.email) + '，信裡只有連結，報告在網站上看和下載。</p>' +
+      '<p class="small">試跑期間由工作人員製作，目標 12 小時內交付；中間如果要多問你幾件事，會寄信請你回來回答。做不出站得住的報告會全額退點。</p></div>' +
+      (enough ? '' : '<p class="err">點數不夠：' + u[0] + '要 ' + u[1] + ' 點。試跑期間還不能買點，請聯絡邀請你的人。</p>') +
+      '<div class="nav-row"><button type="button" class="btn quiet" id="back">回到初階報告</button><button type="button" class="btn" id="go"' + (enough ? '' : ' disabled') + '>確認，扣 ' + u[1] + ' 點</button></div></section>';
+    document.getElementById('back').onclick = function () { report(S.reportText); };
+    // 附件：跟讀書會表單同樣的限制（後台 Code.gs 的 upload_ 收 8MB 以內、最多 3 個）
+    var files = [], MAXF = 3, MAXB = 8 * 1024 * 1024, OKT = /\.(pdf|docx?|xlsx?|pptx?|png|jpe?g|heic|webp|txt|md)$/i;
+    var drawFiles = function () {
+      var ul = document.getElementById('u-filelist');
+      ul.innerHTML = files.map(function (f, i) { return '<li><span>' + esc(f.name) + '（' + (f.size / 1048576).toFixed(1) + 'MB）</span><button type="button" class="link" data-rm="' + i + '">拿掉</button></li>'; }).join('');
+      [].forEach.call(ul.querySelectorAll('[data-rm]'), function (b) { b.onclick = function () { files.splice(+b.dataset.rm, 1); drawFiles(); }; });
+    };
+    document.getElementById('u-files').onchange = function (e) {
+      say('');
+      [].forEach.call(e.target.files, function (f) {
+        if (files.length >= MAXF) { say('最多 3 個檔案'); return; }
+        if (!OKT.test(f.name)) { say(f.name + '：這種檔案收不了'); return; }
+        if (f.size > MAXB) { say(f.name + '：超過 8MB，請改貼雲端連結'); return; }
+        files.push(f);
+      });
+      e.target.value = ''; drawFiles();
+    };
+    var bizBox = document.getElementById('u-biz');
+    [].forEach.call(document.querySelectorAll('input[name="u-role"]'), function (x) {
+      x.onchange = function () { bizBox.hidden = !(x.value === '高階主管' || x.value === '老闆或創業者'); };
+    });
+    document.getElementById('go').onclick = function () {
+      var g = function (id) { var el = document.getElementById('u-' + id); return el ? el.value.trim() : ''; };
+      var p = S.lastProfile || {}, a = S.lastAnswers || {};
+      var wan = function (n) { return n ? '約 ' + Math.round(n / 1e4) + ' 萬' : ''; };
+      var f = { name: g('name'), age: g('age'), place: g('place'), role: val('u-role'), industry: g('industry'), company: g('company'),
+        website: g('website'), title: g('title'), risk: val('u-risk'), edge: g('edge'), twoSides: g('two'), line: g('line'),
+        years: val('u-years'), revenue: val('u-revenue'), profit: val('u-profit'), b2b: val('u-b2b'), familyBiz: val('u-familyBiz'),
+        family: S.famLabels || [], goal1: (p.goals || [])[0], goal2: (p.goals || [])[1], goal3: (p.goals || [])[2], habit: a.habit,
+        savings: wan(p.savings), spend: wan(p.monthlyExpense), cash: wan(p.cash), staff: p.employees != null ? String(p.employees) : '',
+        flow: p.monthlyOut ? '每月要付出去約 ' + Math.round(p.monthlyOut / 1e4) + ' 萬' : '' };
+      var miss = [['name', '稱呼'], ['age', '年齡'], ['place', '所在國家和城市'], ['role', '角色'], ['industry', '產業'], ['risk', '能承受多少風險']]
+        .filter(function (m) { return !f[m[0]]; }).map(function (m) { return m[1]; });
+      if (miss.length) { say('還沒填：' + miss.join('、')); return; }
+      f.links = g('links');
+      var btn = this;
+      call(btn, 'order', { kind: u[0], card: S.card, story: S.story, answers: a, profile: p, report: S.reportText, form: f }).then(function (r) {
+        if (r.points != null) S.points = r.points;
+        var go = function () { location.href = 'case.html?t=' + encodeURIComponent(r.token); };
+        if (!files.length || r.again) return go();
+        btn.disabled = true;
+        var chain = Promise.resolve();
+        files.forEach(function (fl, i) {
+          chain = chain.then(function () {
+            say('點數已扣，上傳附件 ' + (i + 1) + '／' + files.length + '：' + fl.name);
+            return window.fileToBase64(fl).then(function (b64) { return window.pilotApi('upload', { token: r.token, name: fl.name, mime: fl.type, data: b64 }); });
+          });
+        });
+        chain.then(go, function (e) { say('點數已扣、報告會照常做，但附件沒傳上去（' + e.message + '）。之後回信給我們就好。'); setTimeout(go, 4000); });
+      });
+    };
   }
 
   // 開場：有登入就直接寫，沒有就先開帳號

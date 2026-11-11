@@ -19,7 +19,7 @@ var HAIKU = 'claude-haiku-5-5';
 
 // Code.gs 的 doPost 認得的動作，加上這幾個（在 Code.gs 的 fn 表裡也要列：見 docs/部署說明.md）
 function accountActions_() {
-  return { signupStart: signupStart_, signupFinish: signupFinish_, login: login_, me: me_, card: card_, overview: overview_ };
+  return { signupStart: signupStart_, signupFinish: signupFinish_, login: login_, me: me_, card: card_, overview: overview_, order: order_ };
 }
 
 // ---------- 帳號表 ----------
@@ -249,4 +249,64 @@ function overview_(req) {
   var md = Overview.toMarkdown(card, o, OV_QLIB.macro) +
     '\n\n---\n這份初階報告的問題整理由 AI 協助，內容由規則產生，經規則和資料檢核，沒有針對你的情況做判斷。';
   return { ok: true, report: md, points: left };
+}
+
+// ---------- 從初階報告升級成分析報告或完整報告：扣點、建案件資料夾，之後走進度頁（case.html） ----------
+// 點數照 intake_form.md 點數表的「概述升分析」「概述升完整」；急件還沒開
+var UPGRADE = { '分析報告': 40, '完整報告': 90 };
+function order_(req) {
+  var a = account_(req);
+  var kind = String(req.kind || ''), cost = UPGRADE[kind];
+  if (!cost) throw new Error('不認得的報告種類');
+  var card = req.card || {}, f = req.form || {};
+  if (!card['要決定的事'] || !card['兩難型態']) throw new Error('缺問題卡，請從初階報告重新開始');
+  ['name', 'age', 'place', 'role', 'industry', 'risk'].forEach(function (k) { if (!String(f[k] || '').trim()) throw new Error('有必填的欄位還沒填'); });
+  var story = String(req.story || '').slice(0, 20000);
+  // 同一張問題卡、同一種報告只能有一份（連按兩次只扣一次）
+  var key = 'O_' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,
+    a.email + '|' + kind + '|' + card['要決定的事'], Utilities.Charset.UTF_8)).slice(0, 24);
+  var p = props_(), lock = LockService.getScriptLock(); lock.waitLock(20000);
+  var c, left;
+  try {
+    var prev = p.getProperty(key);
+    if (prev) return { ok: true, token: prev, again: true };
+    var fresh = findRow_(a.email), had = Number(fresh.points);
+    if (had < cost) throw new Error('點數不夠：' + kind + '要 ' + cost + ' 點，你現在有 ' + had + ' 點');
+    left = had - cost;
+    setCell_(fresh.row, 'points', left);
+    try {
+      var form = {
+        name: f.name, email: a.email, line: f.line, story: story, deadline: card['要決定的時間'], kind: kind + '（從初階報告升級）',
+        age: f.age, place: f.place, role: f.role, company: f.company, website: f.website, title: f.title, industry: f.industry,
+        family: f.family || [], goal1: f.goal1, goal2: f.goal2, goal3: f.goal3, habit: f.habit, risk: f.risk, edge: f.edge, twoSides: f.twoSides,
+        savings: f.savings, spend: f.spend, staff: f.staff, years: f.years, revenue: f.revenue, profit: f.profit, cash: f.cash, flow: f.flow,
+        b2b: f.b2b, familyBiz: f.familyBiz, links: String(f.links || '').slice(0, 2000)
+      };
+      c = createCase_(form, { card: card, cardMd: cardMd_(card), answers: req.answers || {}, profile: req.profile || {}, report: String(req.report || ''), points: cost }, true);
+    } catch (err) {
+      setCell_(fresh.row, 'points', had);   // 扣了點、案件沒建起來：馬上全退
+      console.error('升級建案件失敗：' + err);
+      throw new Error('建立的時候出了問題，點數已經退回，請再試一次');
+    }
+    p.setProperty(key, c.token);
+  } finally { lock.releaseLock(); }
+  return { ok: true, token: c.token, caseId: c.caseId, points: left };
+}
+function cardMd_(c) {
+  return '# 問題卡（用戶在初階報告流程確認過）\n\n' +
+    '- 要決定的事：' + (c['要決定的事'] || '') + '\n- 兩難型態：' + (c['兩難型態'] || '') + '\n' +
+    '- A：' + (c.A || '') + '｜代價：' + (c['A的代價'] || '') + '\n- B：' + (c.B || '') + '｜代價：' + (c['B的代價'] || '') + '\n' +
+    '- 要決定的時間：' + (c['要決定的時間'] || '') + '\n- 你最擔心的事：' + (c['你最擔心的事'] || '') + '\n' +
+    '- 缺的資料：' + ((c['缺的資料'] || []).join('；') || '無') + '\n\n## 重述\n\n' + (c['重述'] || '') + '\n';
+}
+
+// ---------- 退點（只從 Apps Script 編輯器手動執行） ----------
+// 改下面兩行再選 adminRefund 按「執行」：把點數加回這個帳號（例如報告做不出來、用戶要退）
+var REFUND_EMAIL = 'someone@example.com';
+var REFUND_POINTS = 0;
+function adminRefund() {
+  var a = findRow_(normEmail_(REFUND_EMAIL));
+  if (!a) { console.log('找不到這個帳號'); return; }
+  setCell_(a.row, 'points', Number(a.points) + Number(REFUND_POINTS));
+  console.log(a.email + ' 退 ' + REFUND_POINTS + ' 點，現在 ' + (Number(a.points) + Number(REFUND_POINTS)) + ' 點');
 }
