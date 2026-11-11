@@ -53,3 +53,10 @@ input[type=file]::file-selector-button { background: var(--surface-2); color: va
 
 /* app 畫面的標題比首頁小 */
 .app h1, .app .head { font-size: clamp(1.375rem, 1.15rem + 0.8vw, 2rem); line-height: 1.3; }
+
+/* 初階報告流程（begin.html） */
+.step > p + .fields, .step > .card + p { margin-top: 1.25rem; }
+.step > p + .fields { margin-top: 1.5rem; }
+.md .li, .notice .li { padding-left: 1.1em; text-indent: -1.1em; margin-top: 0.35rem; }
+.md hr { border: 0; border-top: 1px solid var(--surface-2); margin: 1.5rem 0 1rem; }
+button.link { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }

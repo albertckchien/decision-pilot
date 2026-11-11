@@ -12,7 +12,7 @@ function doPost(e) {
     var fn = {
       submit: submit_, upload: upload_, get: get_, confirmCard: confirmCard_,
       answer: answer_, feedback: feedback_, download: download_
-    }[req.action];
+    }[req.action] || accountActions_()[req.action];   // 帳號、問題卡、初階報告在 Account.gs
     if (!fn) return out_({ ok: false, error: '不認得的動作' });
     return out_(fn(req));
   } catch (err) {

@@ -3,8 +3,12 @@ window.pilotApi = function (action, payload) {
   var url = window.PILOT && window.PILOT.API_URL;
   if (!url) return Promise.reject(new Error('網站還沒接上後台（config.js 的 API_URL 是空的）'));
   var body = JSON.stringify(Object.assign({ action: action }, payload || {}));
-  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body, redirect: 'follow' })
-    .then(function (r) { if (!r.ok) throw new Error('連線失敗（' + r.status + '）'); return r.json(); })
+  // 60 秒沒回應就停，不讓按鈕一直卡在「處理中」
+  var ctl = window.AbortController ? new AbortController() : null;
+  var timer = ctl ? setTimeout(function () { ctl.abort(); }, 60000) : null;
+  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body, redirect: 'follow', signal: ctl ? ctl.signal : undefined })
+    .catch(function (e) { throw new Error(e && e.name === 'AbortError' ? '等太久沒有回應，請再按一次' : '連不上後台，請檢查網路後再試'); })
+    .then(function (r) { if (timer) clearTimeout(timer); if (!r.ok) throw new Error('連線失敗（' + r.status + '）'); return r.json(); })
     .then(function (j) { if (!j.ok) throw new Error(j.error || '後台回了錯誤'); return j; });
 };
 
