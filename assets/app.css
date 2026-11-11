@@ -60,3 +60,9 @@ input[type=file]::file-selector-button { background: var(--surface-2); color: va
 .md .li, .notice .li { padding-left: 1.1em; text-indent: -1.1em; margin-top: 0.35rem; }
 .md hr { border: 0; border-top: 1px solid var(--surface-2); margin: 1.5rem 0 1rem; }
 button.link { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+/* 補題：從描述先填好的那幾題收在一起；「不確定」「不適用」顏色淡一點 */
+.prefilled { margin: 0; }
+.prefilled summary { cursor: pointer; line-height: 1.6; }
+.prefilled[open] summary { margin-bottom: 1.5rem; }
+.prefilled .field + .field { margin-top: 1.5rem; }
+.choices .nope { color: var(--muted); }

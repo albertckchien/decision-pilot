@@ -126,15 +126,51 @@ function account_(req) {
 function me_(req) { var a = account_(req); return { ok: true, email: a.email, points: Number(a.points), cardUses: Number(a.card_uses), kind: a.kind }; }
 
 // ---------- 問題卡：一次 Haiku ----------
+// 預填：補題能從描述看出來的先填好，前端只問看不出來的（選項文字要跟 assets/begin.js 的補題一致）
+var PREFILL_ONE = {
+  '走留種類': ['同產業換公司', '轉行', '去國外工作'],
+  '有offer': ['有', '沒有'],
+  '技能幾成': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+  '強項帶不帶得走': ['帶得走', '一部分', '綁在現在的地方'],
+  '新領域有認識的人': ['有', '沒有'],
+  '擴大種類': ['加碼現有業務', '開新點進新市場'],
+  '擴張方向': ['同樣的產品進新市場', '新產品賣給老客戶', '新產品進新市場', '往上下游整合'],
+  '擴張方式': ['自己設點', '併購', '合資', '授權或加盟', '找代理經銷', '策略聯盟'],
+  '優勢帶得過去': ['在', '一部分', '不在'],
+  '有對的人帶': ['有', '沒有'],
+  '加碼什麼': ['加廣告或行銷預算', '加人', '加產能或設備', '降價或加碼優惠'],
+  '知不知道多投能換回多少': ['知道', '大概知道', '不知道'],
+  '多的量接不接得住': ['接得住', '要再加人或設備', '接不住'],
+  '會壓到今年獲利': ['會', '不會'],
+  '加了收不收得回來': ['隨時可以停', '要等合約到期', '很難收回'],
+  '想好停損點': ['有', '沒有'],
+  '多久內要決定': ['1', '3', '6'],
+  '有要談的對象': ['有', '沒有']
+};
+var PREFILL_MULTI = {
+  '想走原因': ['薪水', '成長空間', '主管或文化', '工時和健康', '公司前景', '怕被裁員', '家庭因素', '興趣改變', '地點'],
+  '擴張動機': ['成長', '分散風險', '客戶要求', '政府補助', '地緣政治'],
+  '加碼原因': ['趕在年底、旺季或期限前', '團隊士氣或留住關鍵的人', '衝業績目標', '對手在加碼'],
+  '家裡的限制': ['有小孩要照顧', '要照顧長輩', '房貸或大筆負債', '另一半的工作綁在這裡', '自己或家人的健康']
+};
+var PREFILL_NUM = ['存款萬元', '每月固定支出萬元', '公司現金萬元', '每月付出萬元', '員工人數'];   // 只寫數字，看不出來寫「看不出來」
+function prefillSchema_() {
+  var props = {}, req = [];
+  PREFILL_NUM.forEach(function (k) { props[k] = { type: 'string' }; req.push(k); });
+  Object.keys(PREFILL_ONE).forEach(function (k) { props[k] = { type: 'string', enum: PREFILL_ONE[k].concat(['看不出來']) }; req.push(k); });
+  Object.keys(PREFILL_MULTI).forEach(function (k) { props[k] = { type: 'array', items: { type: 'string', enum: PREFILL_MULTI[k] } }; req.push(k); });
+  return { type: 'object', additionalProperties: false, required: req, properties: props };
+}
 var CARD_SCHEMA = {
   type: 'object', additionalProperties: false,
-  required: ['重述', '要決定的事', '兩難型態', '第0級', 'A', 'A的代價', 'B', 'B的代價', '要決定的時間', '你最擔心的事', '缺的資料'],
+  required: ['重述', '要決定的事', '兩難型態', '第0級', 'A', 'A的代價', 'B', 'B的代價', '要決定的時間', '你最擔心的事', '缺的資料', '預填'],
   properties: {
     '重述': { type: 'string' }, '要決定的事': { type: 'string' },
     '兩難型態': { type: 'string', enum: ['走還是留', '擴大還是守住', '縮小或收掉', '錢和夥伴', '人和交棒', '都不是'] },
     '第0級': { type: 'string' }, 'A': { type: 'string' }, 'A的代價': { type: 'string' },
     'B': { type: 'string' }, 'B的代價': { type: 'string' }, '要決定的時間': { type: 'string' },
-    '你最擔心的事': { type: 'string' }, '缺的資料': { type: 'array', items: { type: 'string' } }
+    '你最擔心的事': { type: 'string' }, '缺的資料': { type: 'array', items: { type: 'string' } },
+    '預填': prefillSchema_()
   }
 };
 var CARD_LIMITS = { '重述': 150, '要決定的事': 60, 'A': 40, 'A的代價': 60, 'B': 40, 'B的代價': 60, '要決定的時間': 40, '你最擔心的事': 80 };
@@ -166,7 +202,7 @@ function callHaiku_(story, profileText) {
   var key = props_().getProperty('ANTHROPIC_API_KEY');
   if (!key) throw new Error('後台還沒設定好，請稍後再試');
   var body = {
-    model: HAIKU, max_tokens: 2000,
+    model: HAIKU, max_tokens: 3000,
     output_config: { effort: 'low', format: { type: 'json_schema', schema: CARD_SCHEMA } },
     system: CARD_PROMPT,   // 在 初階報告_資料.gs
     messages: [{ role: 'user', content: '<用戶寫的描述>\n' + story + '\n</用戶寫的描述>\n<個人檔案>\n' + profileText + '\n</個人檔案>' }]
