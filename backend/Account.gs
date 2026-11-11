@@ -54,8 +54,8 @@ function checkPassword_(pw) {
 
 // ---------- 試跑帳號（只從 Apps Script 編輯器手動執行，網站叫不到） ----------
 // 改下面兩行再按「執行」：每個 Email 開一個試跑帳號、存 TEST_POINTS 點，密碼只印在執行紀錄裡，抄到本機的帳密清單（不進 git）
-var TEST_EMAILS = ['someone@example.com'];
-var TEST_POINTS = 150;
+var TEST_EMAILS = ['tester1@pathwise.test', 'tester2@pathwise.test', 'tester3@pathwise.test'];
+var TEST_POINTS = 200;
 function adminCreateTestAccounts() {
   TEST_EMAILS.forEach(function (raw) {
     var email = normEmail_(raw);
@@ -123,7 +123,13 @@ function account_(req) {
   if (!a || a.status !== '啟用') throw new Error('這個帳號已經停用');
   return a;
 }
-function me_(req) { var a = account_(req); return { ok: true, email: a.email, points: Number(a.points), cardUses: Number(a.card_uses), kind: a.kind }; }
+function me_(req) {
+  var a = account_(req), r = { ok: true, email: a.email, points: Number(a.points), cardUses: Number(a.card_uses), kind: a.kind };
+  if (a.kind === '試跑' && req.where) {   // 試跑帳號才看得到：案件存在哪個 Drive 資料夾（只給名稱，給工作人員對路徑）
+    try { r.casesFolder = DriveApp.getFolderById(props_().getProperty('ROOT_FOLDER_ID')).getName(); } catch (e) { r.casesFolder = '讀不到：' + e.message; }
+  }
+  return r;
+}
 
 // ---------- 問題卡：一次 Haiku ----------
 // 預填：補題能從描述看出來的先填好，前端只問看不出來的（選項文字要跟 assets/begin.js 的補題一致）
