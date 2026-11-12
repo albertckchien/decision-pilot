@@ -20,6 +20,7 @@
 ```text
 decision-pilot/
 ├── index.html、start.html、case.html   ← 首頁、填表、案件頁
+├── begin.html   ← 註冊登入、寫下卡住的事、看初階報告
 ├── assets/      ← 樣式、表單、案件頁、像素場景（pixel.js）、人生模擬播放器（sim.js）
 ├── backend/     ← Google Apps Script 後台（資料放在私人的 Google Drive 資料夾）
 ├── engine/      ← 人生模擬引擎（Node，本機跑，讀 200 國資料；不在網站上執行）
