@@ -156,3 +156,26 @@
 .whatif-box .sim-maplab, .whatif-box .sim-opt span, .whatif-box .sim-rank { font-size: 0.9375rem; }
 
 .st-h { display: flex; align-items: center; gap: 0.6rem; }
+
+/* 2026-11-12 首頁改版：開頭就能玩 */
+.play { min-height: 0; justify-content: flex-start; gap: clamp(1.25rem, 3vh, 2rem); padding-bottom: clamp(2rem, 5vh, 3rem); }
+.play .lead { color: var(--ink); max-width: 36rem; }
+.who-list { list-style: none; padding: 0; margin: clamp(0.5rem, 2vh, 1.5rem) 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.who { all: unset; box-sizing: border-box; cursor: pointer; display: grid; align-content: start; gap: 0.35rem; width: 100%; height: 100%; padding: 1.25rem 1.5rem; background: var(--surface); color: var(--ink); transition: background-color var(--t-ui) var(--ease-out), transform var(--t-ui) var(--ease-out); }
+.who:hover { background: var(--surface-2); }
+.who:active { transform: translateY(1px); }
+.who:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.who[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.who-q { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.2rem, 0.9rem + 1vw, 1.7rem); line-height: 1.3; }
+.who-d, .who-ab { font-size: var(--step-small); }
+.who-ab b { color: var(--accent); }
+.who[aria-pressed="true"] .who-ab b { color: var(--gold); }
+.play + .whatif { margin-top: 0; padding-block: clamp(2rem, 5vw, 4rem); }
+.who-note { margin-top: 1.5rem; }
+.last-say .small a { color: var(--accent); }
+@media (max-width: 760px) { .who-list { grid-template-columns: 1fr; } .who { padding: 1rem var(--margin); } }
+
+/* 報告介紹頁的開頭（2026-11-14） */
+.rp-intro { padding-bottom: 0; }
+.rp-intro .hero-h { font-size: clamp(2.2rem, 1rem + 4vw, 4.5rem); }
+.rp-intro + .how { padding-top: clamp(2rem, 5vh, 3.5rem); }

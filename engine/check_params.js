@@ -18,6 +18,7 @@ need('family', v => v && typeof v === 'object', '要是物件');
 need('goals', v => Array.isArray(v) && v.length >= 1 && v.length <= 3 && v.every(g => g.name && ['career', 'family', 'wealth', 'health'].includes(g.metric)), '要 1～3 個，metric 只能是 career、family、wealth、health');
 need('titles', v => Array.isArray(v) && v.length >= 2 && v.length <= 8, '要 2～8 個職稱');
 need('title_index', v => isNum(v) && Number.isInteger(v) && P.titles && v >= 0 && v < P.titles.length, '要是 titles 裡的位置');
+if (P.work_type !== undefined && !['employee', 'self'].includes(P.work_type)) err.push('work_type 要是 employee 或 self');
 need('sensitive', v => typeof v === 'boolean', '要是 true 或 false'); need('has_actions', v => typeof v === 'boolean', '要是 true 或 false');
 need('assumptions', v => Array.isArray(v), '要是文字陣列');
 need('options', v => Array.isArray(v) && v.length >= 2 && v.length <= 4, '要 2～4 個選項');

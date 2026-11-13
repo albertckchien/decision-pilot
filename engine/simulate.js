@@ -60,7 +60,9 @@ function runOnce(D, P, opt, seed) {
   // 選項自己有寫升遷的事時，那段期間引擎不另外隨機升遷，免得「剛升處長，隔年又說升處長的保證沒了」
   const promoWindowEnd = Math.max(-1, ...(opt.events || []).filter(e => e.effect && e.effect.title).map(e => e.at[1]));
   const styleOf = NM.styleOf;
-  const newJob = cc => { jobCountry = cc; boss = newRole('boss', styleOf(cc)); cws = [0, 1, 2].map(() => newRole('cw', styleOf(cc))); };
+  // 自己做生意：沒有主管、不會被裁員、不隨機升遷（職稱只跟著選項自己的事變），一起做事的人放在 cws
+  const SELF = P.work_type === 'self', TW = SELF ? T.self : T.work;
+  const newJob = cc => { jobCountry = cc; boss = SELF ? null : newRole('boss', styleOf(cc)); cws = [0, 1, 2].map(() => newRole('cw', styleOf(cc))); };
   newJob(phaseAt(opt, 0).country);
   for (let t = 0; t < 75; t++) {
     const year = P.start_year + t, ph = phaseAt(opt, t);
@@ -82,11 +84,11 @@ function runOnce(D, P, opt, seed) {
       return false;
     };
     // 換國家是同一家公司調派，不是換公司（嚴審 F2）
-    if (!retired && ph.country !== jobCountry) { newJob(ph.country); add(fill(!sameCompany ? T.work.newJob : ph.country === P.home ? T.work.transferHome(CITY[ph.country] || ph.country) : T.work.transfer(CITY[ph.country] || ph.country)), '', {}, 0); }
+    if (!retired && ph.country !== jobCountry) { newJob(ph.country); add(fill(SELF ? T.self.move(CITY[ph.country] || ph.country) : !sameCompany ? T.work.newJob : ph.country === P.home ? T.work.transferHome(CITY[ph.country] || ph.country) : T.work.transfer(CITY[ph.country] || ph.country)), '', {}, 0); }
     // 國家大事
     if (world.type === 'global') add(T.world.global, 'hit', { c: -3 }, -1.5);
     cty.events.forEach(e => {
-      if (e === 'recession') add(retired ? T.world.recessionRetired(CITY[ph.country]) : T.world.recession(CITY[ph.country]), 'hit', retired ? { m: -5 } : { c: -2 }, -1);
+      if (e === 'recession') add(retired ? T.world.recessionRetired(CITY[ph.country]) : (SELF ? T.self : T.world).recession(CITY[ph.country]), 'hit', retired ? { m: -5 } : { c: -2 }, -1);
       if (e === 'currency') { add(T.world.currency(CITY[ph.country]), 'hit', {}, -2); m *= 0.88; }
       if (e === 'quake' && rnd() < 0.25) fromPool(T.world.quake);
       if (e === 'quake_big') { if (rnd() < 0.06) add(T.world.quakeDamage, 'hit', { m: -15 }, -2); else fromPool(T.world.quake); }
@@ -104,12 +106,13 @@ function runOnce(D, P, opt, seed) {
     if (!retired && age >= (P.retire_age || 63)) { retired = true; boss = null; cws = []; add(T.life.retire, 'big', { c: -10 }, 1); }
     let income = 0;
     if (!retired) {
-      if (rnd() < (cty.rec ? 0.06 : 0.015)) { sameCompany = false; add(cty.rec ? T.work.layoffRec : T.work.layoff, 'hit', { c: -8, h: -3 }, -4); careerMult *= 0.92; income -= ph.income * careerMult * 0.4; newJob(ph.country); add(fill(T.work.newJob)); }
+      if (SELF && rnd() < (cty.rec ? 0.06 : 0.015)) { add(cty.rec ? T.self.slumpRec : T.self.slump, 'hit', { c: -8, h: -3 }, -4); careerMult *= 0.92; income -= ph.income * careerMult * 0.4; }
+      else if (!SELF && rnd() < (cty.rec ? 0.06 : 0.015)) { sameCompany = false; add(cty.rec ? T.work.layoffRec : T.work.layoff, 'hit', { c: -8, h: -3 }, -4); careerMult *= 0.92; income -= ph.income * careerMult * 0.4; newJob(ph.country); add(fill(T.work.newJob)); }
       const raise = 0.015 + Math.max(-0.03, cty.growth / 200) + (rnd() - 0.5) * 0.02 + (age < 50 ? 0.01 : 0);
       careerMult *= 1 + raise;
-      if (raise > 0.045) fromPool(T.work.raise, '', { c: 2 });
+      if (raise > 0.045) fromPool(TW.raise, '', { c: 2 });
       // 升遷機率看事業數值，職位越高越難升
-      if (t > promoWindowEnd && !promotedThisYear && tIdx < ladder.length - 1 && rnd() < (Math.max(0, (c - 60) / 400) + (age < 55 ? 0.02 : 0.005)) / (tIdx + 1)) { tIdx++; add(T.work.promote(ladder[tIdx]), 'big', { c: 3, income: 0.1 }, 3); }
+      if (!SELF && t > promoWindowEnd && !promotedThisYear && tIdx < ladder.length - 1 && rnd() < (Math.max(0, (c - 60) / 400) + (age < 55 ? 0.02 : 0.005)) / (tIdx + 1)) { tIdx++; add(T.work.promote(ladder[tIdx]), 'big', { c: 3, income: 0.1 }, 3); }
       if (rnd() < 0.08) cws[Math.floor(rnd() * cws.length)] = newRole('cw', styleOf(ph.country));
       income += ph.income * careerMult;
       c = clamp(c + (age < 55 ? 1 : -CFG.careerDeclineAfter55));
@@ -151,7 +154,7 @@ function runOnce(D, P, opt, seed) {
     if (rnd() < (age < 45 ? 0.05 : age < 60 ? 0.1 : 0.18)) { const big = rnd() < (age < 60 ? 0.15 : 0.3); const got = fromPool(big ? T.health.big : T.health.small, big ? 'hit' : '', { h: big ? -12 : -4, m: big ? -10 : -1 }); if (big && got) ev[ev.length - 1][2] = -4; }
     // 每年 5～15 件：照人生階段從各類事件補
     const target = 5 + Math.floor(rnd() * 11), pools = [];
-    if (!retired) pools.push([T.work.pool, 4]);
+    if (!retired) pools.push([TW.pool, 4]);
     if (spouse && spouse.alive) pools.push([T.family.spouse, 2]);
     kids.forEach(k => {
       const a = k.age0 + t, sub = s => s.replace(/\{kid\}/g, '{' + k.id + '}').replace('{ks}', '{' + k.ks + '}');
@@ -176,7 +179,7 @@ function runOnce(D, P, opt, seed) {
       sp: spouse ? { age: spouse.age + t, status: !spouse.alive ? '已過世' : retired ? '退休' : (ph.spouse_income || 0) > 0 ? '上班' : '在家' } : null,
       kids: kids.map(k => { const ka = k.age0 + t; return { age: ka, status: k.wed && ka >= k.wed ? '已婚，另一半是{' + k.ks + '}' + (k.baby && ka >= k.baby ? '，有一個小孩' : '') : stage(ka) }; }),
       parents: parents.map(pp => ({ id: pp.id, age: pp.age + t, status: !pp.alive ? '已過世' : pp.care ? '需要照顧' : pp.age + t >= 80 ? '身體還行' : '身體健康' })),
-      boss: boss ? '{' + boss + '}' : '', cws: cws.map(x => '{' + x + '}'), friends: friends.map(x => '{' + x + '}')
+      boss: boss ? '{' + boss + '}' : '', cwl: SELF ? '一起做事的人' : '', cws: cws.map(x => '{' + x + '}'), friends: friends.map(x => '{' + x + '}')
     };
     if (retired) m = Math.max(0, m);
     years.push({ age, year, city: CITY[ph.country] || ph.country, events: ev, profile, stats: { m: Math.round(retired ? Math.max(0, m) : m), h: Math.round(h), f: Math.round(f), c: Math.round(c) } });

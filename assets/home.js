@@ -1,6 +1,5 @@
-// 首頁：進場動畫、開頭那一格會動的人生、如果人生的播放器（讀範例情境 engine/example_out.json）。
+// 首頁：進場動畫、挑一個人看兩條路（engine/demo/*.json，simulate.js 先算好）。
 (function () {
-  // 進場：每個區塊進到畫面才出現一次；沒有 JS 時內容照樣看得到
   var els = document.querySelectorAll('[data-reveal]');
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (es) {
@@ -11,10 +10,19 @@
     els.forEach(function (el) { el.classList.add('in'); });
   }
 
-  // 如果人生：範例情境
-  var root = document.getElementById('sim-root');
-  if (root && window.renderSim && window.fetch) {
-    fetch('engine/example_out.json').then(function (r) { return r.json(); }).then(function (d) { window.renderSim(root, d); })
-      .catch(function () { root.insertAdjacentHTML('beforeend', '<p>範例模擬暫時載入不了，重新整理一次試試。</p>'); });
+  // 挑一個人：換人就重畫播放器；同一份資料只抓一次
+  var root = document.getElementById('sim-root'), btns = document.querySelectorAll('.who'), cache = {}, want = null;
+  if (!root || !btns.length || !window.renderSim || !window.fetch) return;
+  function show(k, scroll) {
+    want = k;
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.who === k)); });
+    var got = cache[k] ? Promise.resolve(cache[k]) : fetch('engine/demo/' + k + '.json?v=20261114a').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    got.then(function (d) {
+      cache[k] = d; if (want !== k) return;
+      root.innerHTML = ''; window.renderSim(root, d, { mode: 'paths' });
+      if (scroll) root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }).catch(function () { root.innerHTML = '<p>這段人生暫時載入不了，重新整理一次試試。</p>'; });
   }
+  btns.forEach(function (b) { b.onclick = function () { show(b.dataset.who, true); }; });
+  show(btns[0].dataset.who, false);
 })();

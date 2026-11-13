@@ -1,7 +1,13 @@
 // 人生模擬播放器：讀引擎產出的 人生模擬.json（engine/simulate.js），8-bit 像素場景（pixel.js）。
 // case.js 有 人生模擬.json 時呼叫 window.renderSim(root, data)。
-window.renderSim = function (root, data) {
+// opts.mode === 'paths'（首頁）：同一種運氣下，A、B 兩條路並排；原本（報告頁）是同一條路的運氣好、運氣差並排
+window.renderSim = function (root, data, opts) {
   if (!data || !data.options || !data.options.length) return;
+  var PATHS = !!(opts && opts.mode === 'paths' && data.options.length >= 2), PA = data.options[0], PB = data.options[1];
+  if (PATHS) data = Object.assign({}, data, { options: [
+    { id: '運氣好的時候', name: '', sub: '兩條路都抽到好運', good: PA.good, bad: PB.good, distG: PA.dist, distB: PB.dist },
+    { id: '運氣差的時候', name: '', sub: '兩條路都抽到壞運', good: PA.bad, bad: PB.bad, distG: PA.dist, distB: PB.dist }] });
+  function lab(k) { return PATHS ? (k === 'good' ? PA : PB).id + '　' + (k === 'good' ? PA : PB).name : (k === 'good' ? '運氣好的那一段' : '運氣差的那一段'); }
   var cur = 0, step = 0, maxStep = 0, timer = null, speed = 1, SPEEDS = [1, 2, 4, 8], scenes = {};
   var FAM = {}, SEX = {}; (data.family || []).forEach(function (p) { FAM[p[0]] = p[1]; SEX[p[0]] = p[2]; });
   var KIDS = (data.family || []).filter(function (f) { return /^老|^小孩/.test(f[0]); });
@@ -15,12 +21,12 @@ window.renderSim = function (root, data) {
   }
 
   root.insertAdjacentHTML('beforeend',
-    '<p class="sim-lead">每條路各跑了 ' + data.runs + ' 次人生，國家的景氣、匯率、天災照真實資料擲骰，壽命照生命表。下面挑出運氣好、運氣差各一段並排播放。人生選擇一律保守，好壞只來自外在的運氣。<strong>這是示意，不是預測，也不是理財建議。</strong>按「播放」開始。</p>' +
+    (PATHS ? '<p class="sim-lead">兩條路各跑了 ' + data.runs + ' 次人生，景氣、匯率、天災照真實資料擲骰，壽命照生命表。先選運氣，再按「播放」，看同一種運氣下兩條路各走成什麼樣子。<strong>角色是虛構的，數字是示意。</strong></p>' : '<p class="sim-lead">每條路各跑了 ' + data.runs + ' 次人生，國家的景氣、匯率、天災照真實資料擲骰，壽命照生命表。下面挑出運氣好、運氣差各一段並排播放。人生選擇一律保守，好壞只來自外在的運氣。<strong>這是示意，不是預測，也不是理財建議。</strong>按「播放」開始。</p>') +
     '<div class="sim-opts" role="group" aria-label="選一個選項">' + data.options.map(function (o, i) { return '<button class="sim-opt" data-i="' + i + '" aria-pressed="' + (i === 0) + '"><strong>' + esc(o.id + '　' + o.name) + '</strong><span>' + esc(o.sub || '') + '</span></button>'; }).join('') + '</div>' +
-    '<div class="sim-ctrl"><button class="go sim-play">播放</button><button class="sim-spd">速度 1×</button><button class="sim-skip">跳到結局</button><span class="sp"></span><button class="sim-only-m" data-one="good" aria-pressed="true">運氣好</button><button class="sim-only-m" data-one="bad" aria-pressed="false">運氣差</button></div>' +
-    '<div class="sim-stages" data-one="good"><section class="sim-stage good" aria-label="運氣好的那一段"></section><section class="sim-stage bad" aria-label="運氣差的那一段"></section></div>' +
+    '<div class="sim-ctrl"><button class="go sim-play">播放</button><button class="sim-spd">速度 1×</button><button class="sim-skip">跳到結局</button><span class="sp"></span><button class="sim-only-m" data-one="good" aria-pressed="true">' + esc(PATHS ? PA.id + ' ' + PA.name : '運氣好') + '</button><button class="sim-only-m" data-one="bad" aria-pressed="false">' + esc(PATHS ? PB.id + ' ' + PB.name : '運氣差') + '</button></div>' +
+    '<div class="sim-stages" data-one="good"><section class="sim-stage good" aria-label="' + esc(lab('good')) + '"></section><section class="sim-stage bad" aria-label="' + esc(lab('bad')) + '"></section></div>' +
     '<section class="sim-words" hidden aria-label="看完之後"><h3>看完這兩段人生</h3>' + (data.quotes || []).map(function (q) { return '<p>' + esc(q.text) + '</p>'; }).join('') + '</section>' +
-    '<p class="sim-note">金額都換算成今天的錢。算進去的：薪水、另一半的收入、生活費、小孩念大學、照顧爸媽、退休年金、存款的報酬；沒算進去的：房貸、保險、外派的津貼和額外花費。數字是示意，判斷請看報告前面的分析。</p>');
+    (PATHS ? '<p class="sim-note">金額都換算成今天的錢，只看趨勢。這是虛構角色的示意，不是預測，也不是理財建議。</p>' : '<p class="sim-note">金額都換算成今天的錢。算進去的：薪水、另一半的收入、生活費、小孩念大學、照顧爸媽、退休年金、存款的報酬；沒算進去的：房貸、保險、外派的津貼和額外花費。數字是示意，判斷請看報告前面的分析。</p>'));
   var Q = function (s) { return root.querySelector(s); };
 
   function profileHtml(y) {
@@ -32,7 +38,7 @@ window.renderSim = function (root, data) {
     (p.parents || []).forEach(function (pp) { var lab = pp.id === 'father' ? '爸爸' : '媽媽'; fam.push([lab, FAM[lab] + '，' + (pp.status === '已過世' ? '已過世' : pp.age + ' 歲，' + pp.status)]); });
     var near = [];
     if (p.boss) near.push(['主管', p.boss]);
-    if (p.cws && p.cws.length) near.push(['同事', p.cws.join('、')]);
+    if (p.cws && p.cws.length) near.push([p.cwl || '同事', p.cws.join('、')]);
     if (p.friends && p.friends.length) near.push(['好朋友', p.friends.join('、')]);
     function dl(title, r) { return '<div><h4>' + title + '</h4><dl>' + r.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl></div>'; }
     return dl('你', me) + dl('家人', fam) + (near.length ? dl('身邊的人', near) : '');
@@ -43,7 +49,7 @@ window.renderSim = function (root, data) {
     if (scenes[k]) scenes[k].stop();
     var rank = L.pct != null ? '在 ' + data.runs + ' 次裡排第 ' + L.pct + ' 百分位' : (k === 'good' ? '不是最好的那次' : '不是最慘的那次');
     // 順序（嚴審 F9）：場景、今年的事、數值，個人資訊收在可以展開的區塊，手機上預設收起
-    st.innerHTML = '<h3><span class="' + (k === 'good' ? 'sim-good-t' : '') + '">' + (k === 'good' ? '運氣好的那一段' : '運氣差的那一段') + '</span></h3>' +
+    st.innerHTML = '<h3><span class="' + (k === 'good' && !PATHS ? 'sim-good-t' : '') + '">' + esc(lab(k)) + '</span></h3>' +
       '<div class="sim-scene"><canvas class="sim-px" aria-hidden="true"></canvas><span class="sim-place">' + esc(y0.city) + '</span><div class="sim-age">' + y0.age + '<small>' + y0.year + '</small></div><div class="sim-pop"></div></div>' +
       '<p class="sim-rank">' + rank + '</p>' +
       '<div class="sim-feedwrap"><ol class="sim-feed" aria-live="off" tabindex="0" aria-label="每一年發生的事，可以往下捲回去看"></ol><button class="sim-latest" hidden>回到最新</button></div>' +
@@ -109,11 +115,11 @@ window.renderSim = function (root, data) {
     } else if (i === n) card(st, L, k);
   }
   function card(st, L, k) {
-    var c = L.card, D = data.options[cur].dist, el = st.querySelector('.sim-card');
-    el.innerHTML = '<h4>' + (k === 'good' ? '運氣好的這一生' : '運氣差的這一生') + '</h4><div class="row"><div><b>' + c.end + ' 歲</b><span>活到</span></div><div><b>' + money(c.peak) + '</b><span>存款最多的時候</span></div><div><b>' + money(c.left) + '</b><span>走的時候留下的</span></div></div>' +
+    var c = L.card, D = PATHS ? data.options[cur][k === 'good' ? 'distG' : 'distB'] : data.options[cur].dist, el = st.querySelector('.sim-card');
+    el.innerHTML = '<h4>' + (PATHS ? esc(lab(k)) + '：這一生' : k === 'good' ? '運氣好的這一生' : '運氣差的這一生') + '</h4><div class="row"><div><b>' + c.end + ' 歲</b><span>活到</span></div><div><b>' + money(c.peak) + '</b><span>存款最多的時候</span></div><div><b>' + money(c.left) + '</b><span>走的時候留下的</span></div></div>' +
       (D ? '<p class="dist">這條路跑的 ' + data.runs + ' 次裡：一半的人活到 ' + D.medEnd + ' 歲以上，' + D.over80 + '% 活過 80 歲；留下的錢中位數約 ' + money(D.medLeft) + '。</p>' : '') +
       '<ul>' + c.big.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '<li>最順的一年：' + esc(c.best) + '</li><li>最難的一年：' + esc(c.worst) + '</li></ul>' +
-      '<p class="dist">這是示意，不是預測，也不是理財建議。這兩段讓你感受這條路走下去的樣子，要怎麼選，請回到報告前面的比較和建議。</p><div class="btns"><button class="again">再看一次</button><button class="review">回頭看每一年</button></div>';
+      '<p class="dist">' + (PATHS ? '這是示意，不是預測。換一種運氣再看一次，常常會不一樣。' : '這是示意，不是預測，也不是理財建議。這兩段讓你感受這條路走下去的樣子，要怎麼選，請回到報告前面的比較和建議。') + '</p><div class="btns"><button class="again">再看一次</button><button class="review">回頭看每一年</button></div>';
     el.classList.add('show');
     // 兩段都播完才出現那幾句話
     if (root.querySelectorAll('.sim-card.show').length === 2 && (data.quotes || []).length) { var w = Q('.sim-words'); w.hidden = false; w.classList.remove('in'); void w.offsetWidth; w.classList.add('in'); }

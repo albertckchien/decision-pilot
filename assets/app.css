@@ -67,3 +67,9 @@ button.link { background: none; border: 0; padding: 0; color: inherit; font: inh
 .prefilled .field + .field { margin-top: 1.5rem; }
 .choices .nope { color: var(--muted); }
 .step > .err { color: #b3261e; margin-top: 1rem; }
+
+/* begin.html 頁首的「報告介紹」靠右，登入後的帳號字樣接在後面（2026-11-14） */
+.bar .bar-link { margin-left: auto; margin-right: 1.25rem; white-space: nowrap; flex-shrink: 0; }
+.app .bar .wordmark { white-space: nowrap; }
+#who:empty { display: none; }
+@media (max-width: 560px) { .app .bar { flex-wrap: wrap; row-gap: 0.25rem; } .app .bar .bar-link { margin-right: 0; } .app .bar #who { flex-basis: 100%; text-align: right; margin: 0; } }

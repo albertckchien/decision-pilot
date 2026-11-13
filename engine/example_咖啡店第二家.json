@@ -1,0 +1,50 @@
+{
+  "case": "示意：咖啡店老闆要不要開第二家店（首頁虛構角色，數字是假設）",
+  "start_year": 2026,
+  "age": 34,
+  "gender": "F",
+  "home": "TWN",
+  "savings": 180,
+  "monthly_spend": 6,
+  "retire_age": 63,
+  "pension_monthly": 2,
+  "family": { "kids": [3], "parents_age": 62, "spouse_age_gap": 1 },
+  "work_type": "self",
+  "goals": [
+    { "name": "把店做起來", "metric": "career" },
+    { "name": "存到錢", "metric": "wealth" },
+    { "name": "陪小孩長大", "metric": "family" }
+  ],
+  "titles": ["咖啡師", "店長", "老闆", "兩家店的老闆", "小品牌老闆"],
+  "title_index": 2,
+  "sensitive": false,
+  "has_actions": false,
+  "options": [
+    {
+      "id": "A", "name": "開第二家店", "sub": "借 150 萬，在隔壁區開分店",
+      "phases": [
+        { "from": 0, "to": 99, "country": "TWN", "income": 110, "spouse_income": 80 }
+      ],
+      "events": [
+        { "text": "第二家店開幕，排隊排到轉角", "p": 1, "at": [0, 0], "once": true, "kind": "big", "effect": { "c": 6, "m": -150, "f": -3, "title": "兩家店的老闆" } },
+        { "text": "每天兩家店跑，晚上回家小孩已經睡了", "p": 0.6, "at": [0, 2], "once": true, "kind": "hit", "effect": { "f": -5, "h": -3 } },
+        { "text": "分店站穩了，每個月多賺一份", "p": 0.55, "at": [1, 3], "once": true, "group": "shop2", "kind": "big", "effect": { "c": 8, "income": 0.35 } },
+        { "text": "分店撐不下去，收掉了", "p": 0.45, "at": [1, 3], "once": true, "group": "shop2", "kind": "hit", "effect": { "c": -8, "m": -60, "h": -3 } },
+        { "text": "百貨公司來談，想請你去設櫃", "p": 0.12, "at": [3, 10], "once": true, "kind": "big", "effect": { "c": 6, "income": 0.15, "title": "小品牌老闆" }, "below_title": "小品牌老闆" }
+      ]
+    },
+    {
+      "id": "B", "name": "守住一家", "sub": "不擴大，把豆子和品質做好",
+      "phases": [
+        { "from": 0, "to": 99, "country": "TWN", "income": 110, "spouse_income": 80 }
+      ],
+      "events": [
+        { "text": "你烘的豆子被美食作家寫進專欄", "p": 0.25, "at": [0, 4], "once": true, "kind": "big", "effect": { "c": 5, "income": 0.1 } },
+        { "text": "隔壁開了一家連鎖咖啡，客人少了兩成", "p": 0.3, "at": [0, 5], "once": true, "kind": "hit", "effect": { "c": -4, "income": -0.15 } },
+        { "text": "週末固定休一天，陪小孩去公園", "p": 0.7, "at": [0, 3], "once": true, "kind": "big", "effect": { "f": 5, "h": 2 } },
+        { "text": "房東說明年要漲房租", "p": 0.35, "at": [1, 6], "once": true, "kind": "hit", "effect": { "m": -20 } }
+      ]
+    }
+  ],
+  "assumptions": ["首頁虛構角色：所有數字都是假設的（咖啡店老闆要不要開第二家店）"]
+}

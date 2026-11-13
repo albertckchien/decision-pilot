@@ -1,0 +1,48 @@
+{
+  "case": "示意：竹科工程師要不要轉去軟體新創（首頁虛構角色，數字是假設）",
+  "start_year": 2026,
+  "age": 30,
+  "gender": "M",
+  "home": "TWN",
+  "savings": 220,
+  "monthly_spend": 4,
+  "retire_age": 63,
+  "pension_monthly": 2.5,
+  "family": { "kids": [], "parents_age": 58, "spouse_age_gap": -1 },
+  "goals": [
+    { "name": "做自己喜歡的事", "metric": "career" },
+    { "name": "身體健康", "metric": "health" },
+    { "name": "財務自由", "metric": "wealth" }
+  ],
+  "titles": ["工程師", "資深工程師", "主任工程師", "技術經理", "技術長"],
+  "title_index": 1,
+  "sensitive": false,
+  "has_actions": false,
+  "options": [
+    {
+      "id": "A", "name": "留在廠裡", "sub": "年薪高，輪班，分紅看景氣",
+      "phases": [
+        { "from": 0, "to": 99, "country": "TWN", "income": 180, "spouse_income": 70 }
+      ],
+      "events": [
+        { "text": "分紅創新高，年終領了 8 個月", "p": 0.3, "at": [0, 6], "once": true, "kind": "big", "effect": { "m": 80, "c": 3 } },
+        { "text": "連續輪大夜班，身體開始抗議", "p": 0.5, "at": [0, 4], "once": true, "kind": "hit", "effect": { "h": -6 } },
+        { "text": "升上主任工程師", "p": 0.5, "at": [1, 4], "once": true, "kind": "big", "effect": { "c": 6, "income": 0.1, "title": "主任工程師" }, "below_title": "主任工程師" },
+        { "text": "公司要你去美國廠支援半年", "p": 0.25, "at": [1, 5], "once": true, "kind": "hit", "effect": { "f": -4, "c": 2 } }
+      ]
+    },
+    {
+      "id": "B", "name": "轉去新創", "sub": "薪水少三成，拿一點股份",
+      "phases": [
+        { "from": 0, "to": 99, "country": "TWN", "income": 120, "spouse_income": 70 }
+      ],
+      "events": [
+        { "text": "第一次做的功能上線，有人寫信來說很好用", "p": 0.8, "at": [0, 1], "once": true, "kind": "big", "effect": { "c": 5, "h": 2 } },
+        { "text": "公司被大廠買下，股份換成一筆錢", "p": 0.18, "at": [2, 6], "once": true, "group": "exit", "kind": "big", "effect": { "m": 400, "c": 6, "title": "技術經理" } },
+        { "text": "新創錢燒完了，公司收掉", "p": 0.4, "at": [1, 5], "once": true, "group": "exit", "kind": "hit", "effect": { "c": -6, "m": -20, "income": -0.1 } },
+        { "text": "常常加班到半夜，但做得很開心", "p": 0.6, "at": [0, 3], "once": true, "kind": "", "effect": { "h": -2, "c": 3 } }
+      ]
+    }
+  ],
+  "assumptions": ["首頁虛構角色：所有數字都是假設的（竹科工程師要不要轉去軟體新創）"]
+}

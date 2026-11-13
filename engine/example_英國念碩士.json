@@ -1,0 +1,242 @@
+{
+  "case": "示意：上班族要不要去英國念碩士（首頁虛構角色，數字是假設）",
+  "start_year": 2026,
+  "age": 27,
+  "gender": "F",
+  "home": "TWN",
+  "savings": 180,
+  "monthly_spend": 3,
+  "retire_age": 63,
+  "pension_monthly": 2.5,
+  "family": {
+    "kids": [],
+    "parents_age": 55,
+    "spouse": false
+  },
+  "goals": [
+    {
+      "name": "看看外面的世界",
+      "metric": "career"
+    },
+    {
+      "name": "存到錢",
+      "metric": "wealth"
+    },
+    {
+      "name": "跟家人的關係",
+      "metric": "family"
+    }
+  ],
+  "titles": [
+    "行銷專員",
+    "資深專員",
+    "行銷經理",
+    "行銷總監"
+  ],
+  "title_index": 0,
+  "sensitive": false,
+  "has_actions": false,
+  "options": [
+    {
+      "id": "A",
+      "name": "去英國念書",
+      "sub": "一年碩士，畢業留下來找工作",
+      "phases": [
+        {
+          "from": 0,
+          "to": 1,
+          "country": "GBR",
+          "income": 0
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "country": "GBR",
+          "income": 140
+        },
+        {
+          "from": 3,
+          "to": 99,
+          "country": "TWN",
+          "income": 120
+        }
+      ],
+      "events": [
+        {
+          "text": "飛到倫敦，學費和房租一次付掉一大筆",
+          "p": 1,
+          "at": [
+            0,
+            0
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "m": -110,
+            "c": 4,
+            "f": -2
+          }
+        },
+        {
+          "text": "同學來自 30 個國家，你多了一群朋友",
+          "p": 0.8,
+          "at": [
+            0,
+            0
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "c": 3,
+            "h": 2
+          }
+        },
+        {
+          "text": "畢業後在倫敦找到工作，留下來",
+          "p": 0.65,
+          "at": [
+            1,
+            1
+          ],
+          "once": true,
+          "group": "job",
+          "kind": "big",
+          "effect": {
+            "c": 6
+          }
+        },
+        {
+          "text": "畢業三個月還沒找到工作，先打零工",
+          "p": 1,
+          "at": [
+            1,
+            1
+          ],
+          "once": true,
+          "group": "job",
+          "kind": "hit",
+          "effect": {
+            "c": -4,
+            "income": -0.3
+          }
+        },
+        {
+          "text": "工作簽證到期，搬回台灣",
+          "p": 1,
+          "at": [
+            3,
+            3
+          ],
+          "once": true,
+          "kind": "",
+          "effect": {
+            "f": 3
+          }
+        },
+        {
+          "text": "過年一個人在宿舍吃泡麵",
+          "p": 0.5,
+          "at": [
+            0,
+            2
+          ],
+          "once": true,
+          "kind": "hit",
+          "effect": {
+            "f": -3
+          }
+        },
+        {
+          "text": "回台灣被外商挖角，直接當行銷經理",
+          "p": 0.4,
+          "at": [
+            3,
+            6
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "c": 8,
+            "income": 0.15,
+            "title": "行銷經理"
+          },
+          "below_title": "行銷經理"
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "name": "留在台灣",
+      "sub": "繼續做行銷，存錢",
+      "phases": [
+        {
+          "from": 0,
+          "to": 99,
+          "country": "TWN",
+          "income": 65
+        }
+      ],
+      "events": [
+        {
+          "text": "升上資深專員",
+          "p": 0.6,
+          "at": [
+            1,
+            3
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "c": 4,
+            "income": 0.1,
+            "title": "資深專員"
+          },
+          "below_title": "資深專員"
+        },
+        {
+          "text": "每年請假出國玩一次",
+          "p": 0.7,
+          "at": [
+            0,
+            5
+          ],
+          "once": false,
+          "kind": "",
+          "effect": {
+            "m": -8,
+            "h": 1
+          }
+        },
+        {
+          "text": "看著同學在 IG 發倫敦的照片，有點不甘心",
+          "p": 0.4,
+          "at": [
+            0,
+            2
+          ],
+          "once": true,
+          "kind": "hit",
+          "effect": {
+            "c": -2
+          }
+        },
+        {
+          "text": "週末常常回家陪爸媽吃飯",
+          "p": 0.7,
+          "at": [
+            0,
+            4
+          ],
+          "once": true,
+          "kind": "big",
+          "effect": {
+            "f": 4
+          }
+        }
+      ]
+    }
+  ],
+  "assumptions": [
+    "首頁虛構角色：所有數字都是假設的（上班族要不要去英國念碩士）"
+  ]
+}
