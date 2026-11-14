@@ -180,3 +180,19 @@
 .lk-bar.nobar { grid-template-columns: 2.4rem 1fr; }
 .lk-bar.nobar .lk-val { white-space: normal; max-width: none; }
 .lk-card.mixed .lk-h em { border-color: var(--gold); color: var(--gold); }
+
+/* 開始頁：住的國家、略過可怕的情節（2026-11-15） */
+.start-form .opt-l { margin-top: 0.9rem; }
+.start-form select { min-height: 3rem; padding: 0 0.75rem; border: 1px solid var(--line); background: #fff; font: inherit; font-size: 1rem; max-width: 100%; }
+.start-form .chk { margin-top: 0.6rem; font-weight: 400; align-items: flex-start; flex-wrap: nowrap; gap: 0.6rem; cursor: pointer; }
+.start-form .chk input { width: 1.2rem; height: 1.2rem; margin-top: 0.2rem; flex: none; accent-color: var(--accent); }
+.start-form .chk .small { display: block; }
+/* 出生卡：跟住的國家並排比 */
+.birth-cmp { margin-top: 1.4rem; overflow-x: auto; }
+.cmp-t { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cmp-t th, .cmp-t td { text-align: left; padding: 0.55rem 0.75rem 0.55rem 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.cmp-t thead th { font-weight: 700; }
+.cmp-t thead small { display: block; font-weight: 400; color: var(--muted); font-size: var(--step-small); }
+.cmp-t tbody th { font-weight: 400; color: var(--muted); font-size: var(--step-small); width: 44%; }
+.cmp-t td { font-weight: 500; }
+@media (max-width: 560px) { .cmp-t tbody th { width: 46%; } .cmp-t th, .cmp-t td { padding-right: 0.5rem; } }

@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/site.css?v=20261115q">
-<link rel="stylesheet" href="play.css?v=20261115q">
+<link rel="stylesheet" href="../assets/site.css?v=20261115r">
+<link rel="stylesheet" href="play.css?v=20261115r">
 </head>
 <body class="play-page">
 <header class="bar">
@@ -29,6 +29,9 @@
         <input id="age" name="age" type="number" inputmode="numeric" min="0" max="90" value="30" required>
         <button class="btn" type="submit">出生</button>
       </div>
+      <label for="home" class="opt-l">你住在哪裡？<span class="small muted">出生時跟這裡並排比</span></label>
+      <select id="home" name="home"></select>
+      <label class="chk"><input type="checkbox" id="soft" name="soft"><span>略過可怕的情節<span class="small muted">死亡、暴力、童婚、戰爭寫得比較平淡，機率和結果不變</span></span></label>
     </form>
     <p class="small muted heavy">依真實統計，可能遇到死亡、戰爭、童婚等沉重情節，建議 15 歲以上。</p>
     <p class="small muted note">家境、性別、城鄉都是隨機的。1996 到 2025 年的國家大事照真實歷史，之後照過去 30 年的規律推估。這是示意，不是預測。</p>
@@ -44,6 +47,7 @@
       <p class="small shared-note" id="shared-note" hidden></p>
       <h2 class="birth-h">出生登記</h2>
       <dl class="birth-dl" id="birth-dl"></dl>
+      <div class="birth-cmp" id="birth-cmp"></div>
       <p class="birth-odds" id="birth-odds"></p>
       <p class="small muted" id="birth-money"></p>
       <div class="btns"><button class="btn" id="b-live">開始這一生</button><button class="btn quiet" id="b-reborn">重新出生</button></div>
@@ -81,7 +85,7 @@
     <ol class="picks" id="e-picks"></ol>
     <p class="small muted" id="e-auto"></p>
     </div>
-    <div class="btns"><button class="btn quiet" id="b-again">再出生一次</button><button class="btn quiet" id="b-share">分享這一生</button><a class="btn quiet" href="sources.html" target="_blank" rel="noopener">資料來源</a></div>
+    <div class="btns"><button class="btn quiet" id="b-again">再出生一次</button><button class="btn quiet" id="b-share">分享這一生</button><button class="btn quiet" id="b-img">存成圖片</button><a class="btn quiet" href="sources.html" target="_blank" rel="noopener">資料來源</a></div>
     <p class="small muted">分享的連結會帶你填的年紀（看得出出生年），不帶其他資料。</p>
     <p class="small share-msg" id="share-msg"></p>
     <input class="share-url" id="share-url" type="text" readonly hidden aria-label="分享的網址">
@@ -114,8 +118,9 @@
   <p class="err" id="err" hidden>資料載入不了，重新整理一次試試。</p>
 </main>
 
-<script src="text.js?v=20261115q"></script>
-<script src="engine.js?v=20261115q"></script>
-<script src="ui.js?v=20261115q"></script>
+<script src="names.js?v=20261115r"></script>
+<script src="text.js?v=20261115r"></script>
+<script src="engine.js?v=20261115r"></script>
+<script src="ui.js?v=20261115r"></script>
 </body>
 </html>

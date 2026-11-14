@@ -19,6 +19,11 @@
   ul.src b { display: block; }
   ul.src span { font-size: var(--step-small); color: var(--muted); }
   ul.plain { padding-left: 1.2em; display: grid; gap: 0.4rem; }
+  .vs-h { font-size: 1rem; margin: 1.5rem 0 0.4rem; }
+  table.vs { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table.vs th, table.vs td { text-align: left; padding: 0.45rem 0.75rem 0.45rem 0; border-bottom: 1px solid var(--line); }
+  table.vs thead th { font-size: var(--step-small); color: var(--muted); font-weight: 500; }
+  table.vs tbody th { font-weight: 400; }
 </style>
 </head>
 <body>
@@ -59,8 +64,31 @@
     <li>2026 年以後的國家大事照過去 30 年的規律擲骰，不是預測。</li>
   </ul>
 
+  <h2>遊戲跑出來的，跟真實統計比一比</h2>
+  <p>每次改遊戲，都會讓系統自己玩一批人生（抉擇都交給系統），再跟真實統計對照。差太多就不上線。</p>
+  <div id="vs"><p class="small muted">要開 JavaScript 才看得到這張表；數字也在 <a class="link" href="stats.json">stats.json</a>。</p></div>
+
   <h2>下載的資料檔</h2>
   <p>瀏覽器會下載 <code>data/</code> 裡的檔案來跑模擬，每個檔有哪些欄位、出處和授權，寫在 <a class="link" href="data/FIELDS.json">data/FIELDS.json</a> 和 <a class="link" href="data/LICENSE.txt">data/LICENSE.txt</a>。不含 Pew 的資料。程式和文字版權所有；資料依上面各自的授權。</p>
 </main>
+<script>
+// 讀 check.js 產生的 stats.json，畫成兩張表（2026-11-15）
+(function () {
+  var box = document.getElementById('vs');
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  fetch('stats.json?v=' + Date.now().toString(36).slice(0, 5)).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (s) {
+    var row = function (k, g, r, u) { return '<tr><th scope="row">' + esc(k) + '</th><td>' + esc(Number(g).toFixed(1) + u) + '</td><td>' + esc(Number(r).toFixed(1) + u) + '</td></tr>'; };
+    var head = function (a, b, c) { return '<thead><tr><th scope="col">' + a + '</th><th scope="col">' + b + '</th><th scope="col">' + c + '</th></tr></thead>'; };
+    var life = [row('平均活到', s.life.game, s.life.real, ' 歲'), row('5 歲前走的比例', s.u5.game, s.u5.real, '%')]
+      .concat(s.dist.map(function (d) { return row(d.k, d.game, d.real, d.u === '%' ? '%' : ' ' + d.u); })).join('');
+    var births = s.births.map(function (b) { return row(b.name, b.game, b.real, '%'); }).join('');
+    box.innerHTML = '<p class="small muted">' + esc(s.date) + '，系統自己玩了 ' + esc(s.runs.toLocaleString('zh-TW')) + ' 次人生。</p>' +
+      '<h3 class="vs-h">壽命</h3><table class="vs">' + head('', '遊戲', '生命表') + '<tbody>' + life + '</tbody></table>' +
+      '<p class="small muted">生命表那一欄：每一局照同國、同出生年、同性別的聯合國生命表算期望值，再平均。平均餘命那三列，遊戲只算活到那個年紀的人，生命表那邊照活到那個年紀的機率加權。</p>' +
+      '<h3 class="vs-h">生在哪一國（出生最多的 10 國）</h3><table class="vs">' + head('', '遊戲抽到', '真實出生人數') + '<tbody>' + births + '</tbody></table>' +
+      '<p class="small muted">這張表另外只抽國家抽了 ' + esc((s.birthDraws || s.runs).toLocaleString('zh-TW')) + ' 次；真實那一欄照 10、20、25、30、35、40 歲六種年紀各占六分之一的出生年加權（1996 年以前出生的用 1996 年的出生人數）。抽樣會晃，差個零點幾是正常的。</p>';
+  }).catch(function () { box.innerHTML = '<p class="small muted">對照表載入不了，重新整理一次試試。</p>'; });
+})();
+</script>
 </body>
 </html>

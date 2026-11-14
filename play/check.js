@@ -101,14 +101,7 @@ for (let i = 0; i < N; i++) {
   try {
     const { L, iso, asked } = play(seed, age, c => { const k = c.opts[(seed >> 3) % c.opts.length].k; (picks[c.id] = picks[c.id] || {})[k] = (picks[c.id][k] || 0) + 1; return k; });
     const p = L.p, C = load(iso), by = E.NOW - age;
-    const b = byIso[iso] = byIso[iso] || { n: 0, age: 0, exp: 0, w: 0, name: C.name };
-    const o5 = {}, ex = cohortE0(C, by, p.sex, o5); b.n++; b.age += p.age; b.exp += ex; u5exp += o5.u5; lifeDiffs.push(p.age - ex);
-    dist.u60 += p.age < 60 ? 1 : 0; dist.u60e += o5.u60;
-    // 表那邊照活到 x 歲的機率 l(x) 加權（高死亡率國家活到 65 歲的人少，不能跟其他國家等權平均）
-    for (const x of [15, 40, 65]) { dist['t' + x] += o5['e' + x] * o5['l' + x]; dist['w' + x] += o5['l' + x]; if (p.age >= x) { dist['s' + x] += p.age - x; dist['n' + x]++; } }
     sumAsked += asked; askedHist[asked] = (askedHist[asked] || 0) + 1;
-    if (p.age < 5) under5++;
-    hmS += p.hmSum || 0; hmN += p.hmN || 0;
     if (p.alive) errs.push(`${iso} seed ${seed} 沒死`);
     if (!Number.isFinite(p.savings)) errs.push(`${iso} seed ${seed} 存款不是數字`);
     // 真實國名：句子裡只准出現自己的國名（國家間戰爭的對手用代稱）
@@ -118,6 +111,20 @@ for (let i = 0; i < N; i++) {
     const pk = p.picks.find(x => x.id === 'after18' && x.k === 'uni');
     if (pk) { const u = uni[iso] = uni[iso] || { n: 0, in: 0, name: C.name, rate: C.p.edu_tertiary }; u.n++; if (p.log.some(e => e.text === T.fmt('uniIn', { who: p, c: C }))) u.in++; }
   } catch (e) { errs.push(`seed ${seed}: ${e.stack.split('\n').slice(0, 3).join(' | ')}`); }
+}
+// 壽命和國家抽樣：另外跑一組系統代選的局（跟 calibrate 同一套跑法）。上面那組為了測到每種選項會故意輪流選，
+// 包括比較不利的選法（保守治療、戰火中留下），壽命會系統性偏短，不拿來校準
+for (let i = 0; i < N; i++) {
+  const seed = 1000 + i * 7919, age = [10, 20, 25, 30, 35, 40][i % 6], by = E.NOW - age;
+  const iso = E.pickCountry(index, by, E.rng(seed ^ 0xC0FFEE)), C = load(iso);
+  const L = E.Life(Object.assign({}, D0), C, { age, seed, auto: true }); while (L.p.alive) L.step();
+  const p = L.p, b = byIso[iso] = byIso[iso] || { n: 0, age: 0, exp: 0, w: 0, name: C.name };
+    const o5 = {}, ex = cohortE0(C, by, p.sex, o5); b.n++; b.age += p.age; b.exp += ex; u5exp += o5.u5; lifeDiffs.push(p.age - ex);
+    dist.u60 += p.age < 60 ? 1 : 0; dist.u60e += o5.u60;
+    // 表那邊照活到 x 歲的機率 l(x) 加權（高死亡率國家活到 65 歲的人少，不能跟其他國家等權平均）
+    for (const x of [15, 40, 65]) { dist['t' + x] += o5['e' + x] * o5['l' + x]; dist['w' + x] += o5['l' + x]; if (p.age >= x) { dist['s' + x] += p.age - x; dist['n' + x]++; } }
+  if (p.age < 5) under5++;
+  hmS += p.hmSum || 0; hmN += p.hmN || 0;
 }
 // 抽樣的期望值：每一局用自己出生年的權重
 for (let i = 0; i < N; i++) {
@@ -131,6 +138,9 @@ if (foreignName.length) fail(`句子裡出現別國國名 ${foreignName.length} 
 // ---------- 程式裡不准引用 V-Dem 數值、不准把 V-Dem 放到畫面 ----------
 // ui.js 只准在載入資料那一行碰到 vdem（交給引擎），其他地方都不准
 for (const f of ['text.js', 'ui.js']) { const src = fs.readFileSync(path.join(__dirname, f), 'utf8').split(/\r?\n/).filter(l => !(f === 'ui.js' && l.includes("j('data/vdem.json')"))).join(' '); if (/vdem|regime/i.test(src)) fail(`${f} 引用了 V-Dem（vdem/regime）`); }
+
+// ---------- 名字：每一國都要對到名字組（區域名稱改過時會整區掉到英文名字，2026-11-15 審出阿拉伯 18 國） ----------
+{ const NM = require('./names.js'); const off = index.countries.filter(c => !NM.known(c)); if (off.length) fail(`沒對到名字組的國家 ${off.length} 個：` + off.slice(0, 8).map(c => c.name + '（' + c.region + '）').join('、')); }
 
 // ---------- 網址參數 ----------
 const bad = ['', '?age=abc', '?age=-1', '?age=99999', '?age=30.5', '?age=%3Cscript%3E', '?age=30&seed=99999999999', '?age=30&seed=-5', '?age=30&seed=1e5', '?age=91', '?seed=15'];
@@ -219,5 +229,17 @@ console.log(`每局停下來問 ${(sumAsked / N).toFixed(1)} 次；分布 ${Obje
 console.log('各抉擇出現次數：' + Object.entries(picks).map(([k, v]) => k + ' ' + Object.values(v).reduce((a, b) => a + b, 0)).join('、'));
 console.log('選了考大學的人，模擬考上的比例（25 歲以上大學學歷比例 × ' + T.UNI_SCALE + ' 再調整）：' + Object.values(uni).filter(u => u.n >= 5).sort((a, b) => b.n - a.n).slice(0, 8).map(u => `${u.name} ${u.in}/${u.n}（資料 ${Math.round(u.rate)}%）`).join('、'));
 console.log(`重跑一致 ${30 - replayBad}／30；分岔後國家大事一致 ${30 - branchWorldBad}／30`);
+// 公開的「遊戲跑出來的 vs 真實統計」（sources.html 讀這個檔）：只在 1000 局以上、全部通過時更新
+if (!fails.length && N >= 1000 && MODE !== 'calibrate' && MODE !== 'snapshot') {
+  const r1 = v => Math.round(v * 10) / 10, totB = rows.reduce((s, [, b]) => s + b.w, 0);
+  const M = 20000, cnt = {};
+  for (let i = 0; i < M; i++) { const age = [10, 20, 25, 30, 35, 40][i % 6], iso = E.pickCountry(index, E.NOW - age, E.rng((900000 + i * 7919) ^ 0xC0FFEE)); cnt[iso] = (cnt[iso] || 0) + 1; }
+  const top = rows.map(([iso, b]) => [iso, b]).sort((a, b) => b[1].w - a[1].w).slice(0, 10).map(([iso, b]) => ({ name: b.name, game: r1((cnt[iso] || 0) / M * 100), real: r1(b.w / totB * 100) }));
+  const stats = { date: new Date().toISOString().slice(0, 10), engine: E.ENGINE_V, data: DATA_V, runs: N,
+    life: { game: r1(totAge / totN), real: r1(totExp / totN) }, u5: { game: r1(under5 / N * 100), real: r1(u5exp / N * 100) },
+    dist: distRows.map(([k, a, b, , u]) => ({ k, game: r1(a), real: r1(b), u: u.trim() })), births: top, birthDraws: M };
+  fs.writeFileSync(path.join(__dirname, 'stats.json'), JSON.stringify(stats, null, 1));
+  console.log('已更新 stats.json（資料來源頁的「遊戲 vs 真實統計」）');
+}
 console.log(fails.length ? `\n沒過 ${fails.length} 條：\n  ` + fails.slice(0, 30).join('\n  ') : '\n全部通過');
 process.exit(fails.length ? 1 : 0);

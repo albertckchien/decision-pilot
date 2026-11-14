@@ -9,12 +9,13 @@ let NOW = 2026, HIST0 = 1996, HIST1 = 2025;
 const MAX_ASK = 9, MAX_AGE = 90;
 // 死亡率校準（只用在 15 歲以上；15 歲以前完全照生命表，嬰幼兒死亡率不打折）。
 // 重病、戰爭會讓人比生命表早走，15 歲以上的死亡率乘這個數拉回來。
-// 2026-11-15 用 3000 局校的：乘 1 時平均比生命表短 3.0 歲，乘 0.7 時差 0.01 歲。check.js（1000 局以上）會檢查差在 max(1.2 歲, 2.5 倍標準誤) 以內。
+// 2026-11-15 第二次：健康係數扣掉自然老化之後，乘 1 就對上（3000 局：平均差 −0.29 歲；60 歲前 20.1%／19.9%；15、40、65 歲餘命 64.5／64.8、41.6／41.9、20.6／20.8）。
+// 第一次（老化重複算時）要乘 0.7 才對上平均，但年輕人走太少、老人走太多。check.js（1000 局以上）會檢查差在 max(1.2 歲, 2.5 倍標準誤) 以內。
 // 什麼時候要重校：改了死亡、重病、戰爭、健康的算法，或每週資料更新後 check.js 的壽命檢查沒過。
 // 怎麼重校：node play/check.js calibrate（試幾個值、印出差多少），把最接近 0 的那個填回這裡，再跑 check.js 1000。
-let MORT_K = 0.7;
+let MORT_K = 1;
 // 引擎版本：任何會改變「同一個年紀＋種子跑出來的結果」的改動都要升（分享連結帶著它，check.js 的結局快照也看它）
-const ENGINE_V = 'e20261115g';
+const ENGINE_V = 'e20261115h';
 function config(index) {
   if (index && index.birthYears) { NOW = index.birthYears[1]; HIST0 = index.birthYears[0]; }
   if (index && index.histYears) { HIST0 = index.histYears[0]; HIST1 = index.histYears[1]; } else HIST1 = NOW - 1;
@@ -225,7 +226,11 @@ function Life(D, C, opts) {
   const queue = [];   // 等玩家選的抉擇
   let pending = null, cy = t0;
 
-  function say(key, vars, kind) { const s = T.fmt(key, Object.assign({ who: p, c: C }, vars || {})); if (s) p.log.push({ age: p.age, year: p.year, kind: kind || 'life', text: s }); return s; }
+  function say(key, vars, kind) {
+    const v = Object.assign({ who: p, c: C }, vars || {}), s = T.fmt(key, v);
+    if (s) { const e = { age: p.age, year: p.year, kind: kind || 'life', text: s }, so = T.soft(key, v); if (so && so !== s) e.soft = so; p.log.push(e); }   // soft：「略過可怕的情節」用，不影響結果
+    return s;
+  }
   function stat(k, d) { p.stats[k] = clamp(p.stats[k] + d, 0, 100); }
   function ask(id, ctx) { queue.push({ id, ctx: ctx || {} }); }
 
@@ -363,7 +368,8 @@ function Life(D, C, opts) {
     p.focus = f;
     const e = T.focus[f].e;
     for (const k in e) stat(k, e[k]);
-    stat('health', p.age > 50 ? -(p.age - 50) / 12 : 0);
+    // 50 歲以後健康自然下降（畫面上的健康值）；記下下降了多少，死亡率要扣掉這部分（生命表已經照年齡算過一次，不能再罰一次）
+    { const before = p.stats.health; stat('health', p.age > 50 ? -(p.age - 50) / 12 : 0); p.agedLoss = (p.agedLoss || 0) + (before - p.stats.health); }
     if (f === 'study' && p.inSchool) p.flags.studyYears = (p.flags.studyYears || 0) + 1;
   }
   function autoFocus(opts) {
@@ -373,8 +379,9 @@ function Life(D, C, opts) {
 
   function death() {
     let q = qx(C, p.year, p.age, p.sex);
-    // GS：15 歲以上，健康高的人機率低一點（實測平均約 0.83），再乘 MORT_K 校準
-    const hm = clamp(1.6 - p.stats.health / 80, 0.55, 1.8);
+    // GS：15 歲以上，健康高的人機率低一點（2026-11-15 實測平均約 0.75），再乘 MORT_K 校準
+    // 健康係數只看年紀以外的差異（生活習慣、生病、受傷）：健康值加回自然老化扣掉的部分（2026-11-15：老化重複算兩次，老人走太多、年輕人走太少）
+    const hm = clamp(1.6 - Math.min(100, p.stats.health + (p.agedLoss || 0)) / 80, 0.55, 1.8);
     if (p.age >= 15) { q *= hm * MORT_K; p.hmSum = (p.hmSum || 0) + hm; p.hmN = (p.hmN || 0) + 1; }
     if (p.sick === 1) q = q * 2 + 0.03;
     if (cy.real === false && cy.war === 2 && !p.fled) q += 0.004 * C.zone * 3;   // 推估年份的戰爭另加（真實年份的生命表已含）
@@ -432,7 +439,7 @@ function Life(D, C, opts) {
     if (p.age > 110) { p.alive = false; }
     return out;
   }
-  function describe(c) { return { id: c.id, title: T.choices[c.id].title, desc: T.fmt(T.choices[c.id].desc, { who: p, c: C }), stat: T.choices[c.id].stat ? T.fmt(T.choices[c.id].stat, { who: p, c: C }) : '', opts: options(c).map(o => ({ k: o.k, label: o.label, hint: o.hint || '' })) }; }
+  function describe(c) { return { id: c.id, title: T.choices[c.id].title, desc: T.fmt(T.choices[c.id].desc, { who: p, c: C }), soft: T.choices[c.id].softDesc ? T.fmt(T.choices[c.id].softDesc, { who: p, c: C }) : '', stat: T.choices[c.id].stat ? T.fmt(T.choices[c.id].stat, { who: p, c: C }) : '', opts: options(c).map(o => ({ k: o.k, label: o.label, hint: o.hint || '' })) }; }
   function choose(k) { if (!pending) return; const c = pending; pending = null; apply(c, k); return flush(); }
   function setFocus(f) { p.focusPick = f; }
   function setAuto(v) { opts.auto = v; }

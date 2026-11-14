@@ -130,10 +130,20 @@ const L = {
   death: w => w.who.cause === 'old' ? w.who.age + ' 歲，在睡夢中安詳地走了。' : w.who.age + ' 歲，因為' + w.cause + '走了。'
 };
 
+// 「略過可怕的情節」打開時改用這一句（2026-11-15）：只改畫面上的字，結果和統計都不變。沒列的照原句
+const SOFT = {
+  n_war_start2: '{c}陷入戰爭。',
+  n_attack: '{c}發生一場重大的攻擊事件。',
+  n_quake_big: '一場大地震。',
+  draft: '你被徵召入伍。',
+  violNear: '住的地方治安變差，晚上不太敢出門。',
+  childMarriage: '還沒成年就結婚了。',
+  death: w => w.who.cause === 'old' ? w.who.age + ' 歲，在睡夢中安詳地走了。' : w.who.age < 18 || w.who.cause === 'war' || w.who.cause === 'violence' ? '這一生在 ' + w.who.age + ' 歲結束了。' : w.who.age + ' 歲，因為' + w.cause + '走了。'
+};
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-function fmt(key, v) {
-  v = v || {};
-  let t = Object.prototype.hasOwnProperty.call(L, key) ? L[key] : (/^[a-z]/i.test(key) && !/[一-鿿]/.test(key) ? null : key);
+function fmt(key, v, tbl) {
+  v = v || {}; tbl = tbl || L;
+  let t = Object.prototype.hasOwnProperty.call(tbl, key) ? tbl[key] : (tbl !== L || /^[a-z]/i.test(key) && !/[一-鿿]/.test(key) ? null : key);
   if (t == null) return '';
   if (Array.isArray(t)) t = t[hash(key + (v.who ? v.who.year : '')) % t.length];
   if (typeof t === 'function') t = t(v);
@@ -163,6 +173,7 @@ const jobs = {
   farm: [[['種田', 6, W.farm], ['放牧', 6, W.farm]], [['種田', 6, W.farm], ['養魚', 6, W.farm]], [['種田', 6, W.farm], ['農機修理', 7, W.mach]], [['農場管理', 6, W.farm, 1.3]]]
 };
 // 這個人在這個國家做這份工作，收入是全體平均的幾倍（不含工作種類和個人差異）
+const soft = (key, v) => fmt(key, v, SOFT);
 function jobPay(job, C) {
   const [, g, tw, f, inDetail] = job;
   const useTw = C.occTw && tw && C.occTw[tw];
@@ -298,7 +309,7 @@ const choices = {
   },
   war: {
     title: '戰火打到你住的地方', size: 'big',
-    desc: '每天都聽得到爆炸聲，鄰居一家一家離開。',
+    desc: '每天都聽得到爆炸聲，鄰居一家一家離開。', softDesc: '仗打到附近，鄰居一家一家離開。',
     opts: [
       { k: 'stay', label: '留下來', hint: '房子和工作都在這裡，但很危險', w: () => 1,
         do: (p, x) => { x.stat('happy', -5); return 'stayWar'; } },
@@ -355,6 +366,6 @@ const choices = {
   }
 };
 
-const api = { fmt, jobs, jobPay, focus, focusFor, causes, cause, choices, uniChance, UNI_SCALE, lines: L };
+const api = { fmt, soft, jobs, jobPay, focus, focusFor, causes, cause, choices, uniChance, UNI_SCALE, lines: L };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PlayText = api;
 })(typeof window !== 'undefined' ? window : globalThis);
