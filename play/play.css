@@ -196,3 +196,6 @@
 .cmp-t tbody th { font-weight: 400; color: var(--muted); font-size: var(--step-small); width: 44%; }
 .cmp-t td { font-weight: 500; }
 @media (max-width: 560px) { .cmp-t tbody th { width: 46%; } .cmp-t th, .cmp-t td { padding-right: 0.5rem; } }
+
+/* 開始頁右邊有「100 個嬰兒」時，大標題縮一點，才不會擠成三行（2026-11-15） */
+@media (min-width: 960px) { #s-start.has-babies .display { font-size: clamp(3.4rem, 1rem + 5.2vw, 6.6rem); } }

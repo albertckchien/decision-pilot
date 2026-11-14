@@ -114,3 +114,22 @@ p { max-width: 38em; text-wrap: pretty; }  /* 照實際寬度斷行，避免最�
 .choices input { accent-color: var(--accent); }
 .choices label:has(input:checked) { background: var(--accent); color: var(--accent-ink); }
 fieldset { border: 0; padding: 0; margin: 0; }
+
+/* 「跟你同一年出生的 100 個嬰兒」點陣圖（首頁、再活一次開始頁；2026-11-15） */
+.babies { margin: 0; max-width: 22rem; opacity: 0; transition: opacity 0.4s var(--ease-out, ease); }
+.babies.on { opacity: 1; }
+.bb-h { font-family: var(--font-display); font-weight: 700; font-size: var(--step-lead); line-height: 1.3; margin-bottom: 0.9rem; }
+.bb-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: clamp(0.3rem, 0.8vw, 0.5rem); }
+.bb-grid i { aspect-ratio: 1; border-radius: 50%; background: var(--c); transition: background-color 0.35s ease; }
+.bb-legend { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem 1.25rem; font-size: var(--step-small); }
+.bb-legend li { display: flex; align-items: center; gap: 0.45rem; }
+.bb-legend li i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--c); flex: none; }
+.bb-legend b { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bb-home { margin-top: 0.85rem; font-weight: 500; }
+.bb-note { margin-top: 0.6rem; font-size: var(--step-small); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .babies, .bb-grid i { transition: none; } }
+.has-babies .babies { margin-top: 2.5rem; }
+@media (min-width: 960px) {
+  .has-babies { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 21rem); column-gap: clamp(2.5rem, 5vw, 5rem); align-items: center; }
+  .has-babies .babies { margin-top: 0; }
+}

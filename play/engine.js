@@ -250,7 +250,17 @@ function Life(D, C, opts) {
     const evs = cy.events;
     if (cy.real === null && p.age === 0) say('noHist', { y0: HIST0 }, 'note');
     if (p.year === HIST1 + 1) say('simStart', {}, 'note');
-    for (const e of evs) { const s = say('n_' + e, { y: p.year, infl: cy.infl.toFixed(0) }, 'news'); if (s) p.countryLog.push({ year: p.year, e, real: cy.real }); }
+    const news = e => {
+      const s = say('n_' + e, { y: p.year, infl: cy.infl.toFixed(0) }, 'news');
+      if (s) { p.countryLog.push({ year: p.year, e, real: cy.real }); if (e === 'quake' || e === 'quake_big') p.lastQuakeNews = p.year; if (e === 'quake_big') p.lastBigQuakeNews = p.year; }
+    };
+    for (const e of evs) {
+      // 地震新聞 3 年內只報一次（美國、印尼、日本幾乎年年有，一直重複）；只是不寫進紀錄，結果不變（2026-11-14）。
+      // 強烈地震只被前一則強烈地震擋，小地震不能把它壓掉（獨立重審第 4 條）；只看國家事件，分岔的兩條路一樣
+      if (e === 'quake' && p.lastQuakeNews != null && p.year - p.lastQuakeNews < 3) continue;
+      if (e === 'quake_big' && p.lastBigQuakeNews != null && p.year - p.lastBigQuakeNews < 3) continue;
+      news(e);
+    }
     // 打到身上
     const hit = cy.war ? pr() < C.zone * (p.flags.abroad ? 0 : p.fled ? 0.3 : 1) : false;
     if (cy.war) p.yearsWar++;
@@ -262,7 +272,10 @@ function Life(D, C, opts) {
     if (cy.band >= 4 && p.savings > 0 && p.cash === 'local') { p.savings *= 1 - Math.min(0.6, cy.infl / 200); if (cy.band === 5) say('inflBite'); }
     if (cy.cur && p.cash === 'local' && p.savings > 0) p.savings *= 0.8;
     if (evs.includes('def2') && p.savings > 0) { p.savings *= 0.75; say('defBite'); }
-    if ((evs.includes('quake_big') || evs.includes('typhoon_big')) && pr() < 0.15) { say('disasterHit'); p.savings *= 0.85; stat('happy', -5); }
+    if ((evs.includes('quake_big') || evs.includes('typhoon_big')) && pr() < 0.15) {
+      // 受損那句自己寫明是哪場天災：地震新聞可能被 3 年冷卻壓掉，不能靠前一句（嚴審 2026-11-14 第 2 條）。
+      // 不補寫新聞：受損是個人運氣，補寫會讓分岔的兩條路國家大事不一樣
+      say(evs.includes('typhoon_big') ? 'disasterStorm' : 'disasterQuake'); p.savings *= 0.85; stat('happy', -5); }
     if (evs.includes('coup') && p.job && p.job.kind === 'gov' && pr() < 0.3) { say('coupJob'); stat('happy', -6); }
     if ((evs.includes('rec') || evs.includes('dep') || (evs.includes('glob') && cy.tier >= 2)) && p.job && !p.retired) {
       const lay = (evs.includes('dep') ? 0.2 : 0.08) * (p.job.kind === 'gov' ? 0.3 : p.job.kind === 'risky' ? 1.6 : 1);

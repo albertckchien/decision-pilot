@@ -10,7 +10,7 @@ let S = null;   // 這一局：{seed, age, iso, C, L, picks:[], peak, timer, spe
 
 // ---------- 資料 ----------
 // 資料檔帶版本號：重新打包後舊快取的資料不會配上新程式
-const DATA_V = '20261115d';  // 資料包重新打包時才換
+const DATA_V = '20261115e';  // 資料包重新打包時才換
 // 分享連結帶的版本＝資料版本＋引擎版本，任一個換了，朋友打開時會提示可能不一樣
 const SHARE_V = () => DATA_V + '-' + E.ENGINE_V;
 // 漏斗：網址上的 from 合格就沿用（例如分享進來的 share），不然是 play；連結一律用 URL 物件組

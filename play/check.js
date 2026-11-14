@@ -119,6 +119,8 @@ for (let i = 0; i < N; i++) {
   const iso = E.pickCountry(index, by, E.rng(seed ^ 0xC0FFEE)), C = load(iso);
   const L = E.Life(Object.assign({}, D0), C, { age, seed, auto: true }); while (L.p.alive) L.step();
   const p = L.p, b = byIso[iso] = byIso[iso] || { n: 0, age: 0, exp: 0, w: 0, name: C.name };
+  // 家裡受損那句要自己寫明是哪場天災（地震新聞有 3 年冷卻，不能靠前一句；嚴審 2026-11-14 第 2 條）
+  p.log.forEach(e => { if (/家裡.*損失慘重/.test(e.text) && !/^一場強烈(地震|颱風)/.test(e.text)) fail(`seed ${seed} ${e.year} 年受損那句沒自己寫明是哪場天災`); });
     const o5 = {}, ex = cohortE0(C, by, p.sex, o5); b.n++; b.age += p.age; b.exp += ex; u5exp += o5.u5; lifeDiffs.push(p.age - ex);
     dist.u60 += p.age < 60 ? 1 : 0; dist.u60e += o5.u60;
     // 表那邊照活到 x 歲的機率 l(x) 加權（高死亡率國家活到 65 歲的人少，不能跟其他國家等權平均）

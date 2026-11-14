@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/site.css?v=20261115r">
-<link rel="stylesheet" href="play.css?v=20261115r">
+<link rel="stylesheet" href="../assets/site.css?v=20261115a">
+<link rel="stylesheet" href="play.css?v=20261115s">
 </head>
 <body class="play-page">
 <header class="bar">
@@ -20,7 +20,8 @@
 
 <main id="app" class="wrap">
   <!-- 1. 開始 -->
-  <section id="s-start" class="scr">
+  <section id="s-start" class="scr has-babies">
+    <div class="start-main">
     <h1 class="display">你會生在<br>哪裡？</h1>
     <p class="lead">今天世界上大約有 36 萬個嬰兒出生。照每個國家真實的出生人數抽一個，從出生過到老，大約 5 分鐘。</p>
     <form id="f-start" class="start-form">
@@ -35,6 +36,8 @@
     </form>
     <p class="small muted heavy">依真實統計，可能遇到死亡、戰爭、童婚等沉重情節，建議 15 歲以上。</p>
     <p class="small muted note">家境、性別、城鄉都是隨機的。1996 到 2025 年的國家大事照真實歷史，之後照過去 30 年的規律推估。這是示意，不是預測。</p>
+    </div>
+    <figure class="babies" data-babies data-src="data/index.json" data-age="age" data-home="home"></figure>
   </section>
 
   <!-- 2. 抽國家、出生登記 -->
@@ -118,9 +121,10 @@
   <p class="err" id="err" hidden>資料載入不了，重新整理一次試試。</p>
 </main>
 
-<script src="names.js?v=20261115r"></script>
-<script src="text.js?v=20261115r"></script>
-<script src="engine.js?v=20261115r"></script>
-<script src="ui.js?v=20261115r"></script>
+<script src="names.js?v=20261115s"></script>
+<script src="text.js?v=20261115s"></script>
+<script src="engine.js?v=20261115s"></script>
+<script src="ui.js?v=20261115s"></script>
+<script src="../assets/babies.js?v=20261115a"></script>
 </body>
 </html>

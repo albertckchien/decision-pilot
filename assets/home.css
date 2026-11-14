@@ -1,6 +1,9 @@
 /* 擇路首頁。方向：The sentence is the layout（seed 1344705389）。配色 F2。
    一句話就是版面：開頭的大字裡嵌一格正在播放的人生；之後每一段都是「左邊一句話、右邊證據」。 */
 
+/* 電腦版內容收在中間一欄，跟「再活一次」遊戲頁一樣（2026-11-15 用戶：寬螢幕字全部偏左、右邊空一大片） */
+main { max-width: 64rem; margin-inline: auto; }
+
 .bar { position: sticky; top: 0; z-index: 20; background: var(--bg); }
 .bar nav a { transition: color var(--t-hover); }
 .bar nav a:hover { color: var(--accent); text-decoration: none; }
@@ -188,3 +191,10 @@
 .birth-go-row input { width: 7rem; min-height: 3.25rem; padding: 0 1rem; border: 1px solid var(--line); background: #fff; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .birth-go-row .btn { flex: 1; font-size: 1.125rem; }
 @media (max-width: 640px) { .birth-go-row input { width: 5.5rem; } }
+
+/* 開頭加了「100 個嬰兒」：左邊原本的內容收進 .hero-main，電腦版兩欄（2026-11-15） */
+.hero-main { display: flex; flex-direction: column; gap: clamp(1.25rem, 3vh, 2rem); }
+@media (min-width: 960px) {
+  .hero.has-babies { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 21rem); column-gap: clamp(2.5rem, 5vw, 5rem); align-items: center; }
+  .hero.has-babies .hero-h { font-size: clamp(3.4rem, 1rem + 5.2vw, 6.6rem); }
+}

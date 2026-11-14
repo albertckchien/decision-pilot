@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/site.css?v=20261114a">
-<link rel="stylesheet" href="assets/home.css?v=20261114c">
+<link rel="stylesheet" href="assets/site.css?v=20261115a">
+<link rel="stylesheet" href="assets/home.css?v=20261115b">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -28,7 +28,8 @@
 <main>
 
   <!-- 開頭只有一件事：出生（2026-11-14 改，先玩再說） -->
-  <section id="play" class="hero play wrap" aria-labelledby="hero-h">
+  <section id="play" class="hero play wrap has-babies" aria-labelledby="hero-h">
+    <div class="hero-main">
     <h1 id="hero-h" class="hero-h">你會生在<br>哪裡？</h1>
     <p class="lead">今天世界上大約有 36 萬個嬰兒出生。照真實的出生人數抽一個國家，過完一生，大約 5 分鐘。過完之後，還能回到某一年，走另一條路。</p>
     <form class="birth-go" action="play/" method="get">
@@ -40,6 +41,8 @@
     </form>
     <p class="small muted">依真實統計，可能遇到死亡、戰爭、童婚等沉重情節，建議 15 歲以上。</p>
     <p class="small muted">家境、性別、城鄉都是隨機的。1996 到 2025 年的國家大事照真實歷史，之後照過去 30 年的規律推估。這是示意，不是預測。</p>
+    </div>
+    <figure class="babies" data-babies data-src="play/data/index.json" data-age="go-age"></figure>
   </section>
 
   <section id="say" class="say" aria-labelledby="say-h">
@@ -85,5 +88,6 @@
 </footer>
 
 <script src="assets/home.js?v=20261114c"></script>
+<script src="assets/babies.js?v=20261115a"></script>
 </body>
 </html>
