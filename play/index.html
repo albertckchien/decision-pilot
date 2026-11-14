@@ -9,13 +9,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/site.css?v=20261114h">
-<link rel="stylesheet" href="play.css?v=20261114h">
+<link rel="stylesheet" href="../assets/site.css?v=20261115q">
+<link rel="stylesheet" href="play.css?v=20261115q">
 </head>
 <body class="play-page">
 <header class="bar">
   <a class="wordmark" href="../">擇路 <span class="wm-en">Pathwise</span></a>
-  <a class="small bar-link" href="../begin.html">寫下卡住的事</a>
+  <a class="small bar-link" href="../begin.html?from=play" data-begin>寫下卡住的事</a>
 </header>
 
 <main id="app" class="wrap">
@@ -37,8 +37,11 @@
   <!-- 2. 抽國家、出生登記 -->
   <section id="s-born" class="scr" hidden>
     <p class="roll-label small muted" id="roll-label">抽一個國家⋯</p>
-    <p class="roll" id="roll" aria-live="polite"></p>
+    <p class="roll" id="roll"></p>
+    <p class="small muted dv-note" id="dv-note" hidden>網站更新過，這一生跟朋友當時看到的可能不一樣。</p>
+    <button class="btn quiet skiproll" id="b-skiproll" hidden>跳過</button>
     <article class="birth" id="birth" hidden>
+      <p class="small shared-note" id="shared-note" hidden></p>
       <h2 class="birth-h">出生登記</h2>
       <dl class="birth-dl" id="birth-dl"></dl>
       <p class="birth-odds" id="birth-odds"></p>
@@ -60,7 +63,7 @@
         <button class="btn quiet" id="b-skip">跳到下個抉擇</button>
       </div>
     </div>
-    <ol class="feed" id="feed" aria-live="polite"></ol>
+    <ol class="feed" id="feed"></ol>
     <div class="choice" id="choice" hidden></div>
   </section>
 
@@ -78,11 +81,14 @@
     <ol class="picks" id="e-picks"></ol>
     <p class="small muted" id="e-auto"></p>
     </div>
-    <div class="btns"><button class="btn quiet" id="b-again">再出生一次</button><a class="btn quiet" href="sources.html" target="_blank" rel="noopener">資料來源</a></div>
+    <div class="btns"><button class="btn quiet" id="b-again">再出生一次</button><button class="btn quiet" id="b-share">分享這一生</button><a class="btn quiet" href="sources.html" target="_blank" rel="noopener">資料來源</a></div>
+    <p class="small muted">分享的連結會帶你填的年紀（看得出出生年），不帶其他資料。</p>
+    <p class="small share-msg" id="share-msg"></p>
+    <input class="share-url" id="share-url" type="text" readonly hidden aria-label="分享的網址">
     <aside class="bridge" id="e-bridge">
       <h3>遊戲可以重跑，現實不行。</h3>
       <p>現實裡卡住的事，先寫下來想清楚。免費幫你整理成一份初階報告，大約 15 分鐘。</p>
-      <a class="btn gold" href="../begin.html">寫下卡住的事</a>
+      <a class="btn gold" href="../begin.html?from=play" data-begin>寫下卡住的事</a>
     </aside>
   </section>
 
@@ -90,7 +96,9 @@
   <section id="s-branch" class="scr" hidden>
     <p class="small muted" id="br-where"></p>
     <h2 class="head" id="br-h"></h2>
-    <p class="br-note">世界發生的事跟原本一樣；但你自己的運氣，像會不會生病、活到幾歲，從那一年起重新擲骰。下面標「含運氣」的兩列，差別多半是運氣，不是選擇造成的。這是照統計擲骰子跑出的一種可能，不是預測。</p>
+    <p class="br-note">世界一樣，人生從這裡分岔；之後的抉擇交給系統。這是示意，不是預測。</p>
+    <section class="luck-box" id="br-luck"></section>
+    <h3 class="sub">其中一次：用你原本的運氣</h3>
     <div class="cmp" id="br-cmp"></div>
     <h3 class="sub">從那一年開始，不一樣的事</h3>
     <div class="cmp diff" id="br-diff"></div>
@@ -98,15 +106,16 @@
     <aside class="bridge">
       <h3>遊戲可以重跑，現實不行。</h3>
       <p>現實裡卡住的事，先寫下來想清楚。免費幫你整理成一份初階報告，大約 15 分鐘。</p>
-      <a class="btn gold" href="../begin.html">寫下卡住的事</a>
+      <a class="btn gold" href="../begin.html?from=play" data-begin>寫下卡住的事</a>
     </aside>
   </section>
 
+  <p class="sr-only" id="sr" aria-live="polite"></p>
   <p class="err" id="err" hidden>資料載入不了，重新整理一次試試。</p>
 </main>
 
-<script src="text.js?v=20261114h"></script>
-<script src="engine.js?v=20261114h"></script>
-<script src="ui.js?v=20261114h"></script>
+<script src="text.js?v=20261115q"></script>
+<script src="engine.js?v=20261115q"></script>
+<script src="ui.js?v=20261115q"></script>
 </body>
 </html>

@@ -7,6 +7,14 @@ const T = (typeof module !== 'undefined' && module.exports) ? require('./text.js
 // 年份從資料包讀（config(index)），沒呼叫時用 2026 年版的預設值
 let NOW = 2026, HIST0 = 1996, HIST1 = 2025;
 const MAX_ASK = 9, MAX_AGE = 90;
+// 死亡率校準（只用在 15 歲以上；15 歲以前完全照生命表，嬰幼兒死亡率不打折）。
+// 重病、戰爭會讓人比生命表早走，15 歲以上的死亡率乘這個數拉回來。
+// 2026-11-15 用 3000 局校的：乘 1 時平均比生命表短 3.0 歲，乘 0.7 時差 0.01 歲。check.js（1000 局以上）會檢查差在 max(1.2 歲, 2.5 倍標準誤) 以內。
+// 什麼時候要重校：改了死亡、重病、戰爭、健康的算法，或每週資料更新後 check.js 的壽命檢查沒過。
+// 怎麼重校：node play/check.js calibrate（試幾個值、印出差多少），把最接近 0 的那個填回這裡，再跑 check.js 1000。
+let MORT_K = 0.7;
+// 引擎版本：任何會改變「同一個年紀＋種子跑出來的結果」的改動都要升（分享連結帶著它，check.js 的結局快照也看它）
+const ENGINE_V = 'e20261115g';
 function config(index) {
   if (index && index.birthYears) { NOW = index.birthYears[1]; HIST0 = index.birthYears[0]; }
   if (index && index.histYears) { HIST0 = index.histYears[0]; HIST1 = index.histYears[1]; } else HIST1 = NOW - 1;
@@ -184,7 +192,7 @@ function qx(C, year, age, sex) {
 // opts: {age 現在幾歲, seed, auto 交給系統}
 function Life(D, C, opts) {
   const seed = opts.seed >>> 0, birthYear = NOW - opts.age;
-  const pr = rng(seed ^ 0x9E3779B9);            // 個人
+  let pr = rng(seed ^ 0x9E3779B9);              // 個人（分岔多跑時可以換一條，見 reseed）
   const wr = rng(seed ^ 0x51ED270B);            // 世界（全球衰退）
   const cr = rng(seed ^ 0x2545F491);            // 國家
   const glob = {};
@@ -209,7 +217,7 @@ function Life(D, C, opts) {
     age: 0, year: birthYear, alive: true, stats: { health: 70 + normal(pr) * 8, happy: 60 + normal(pr) * 8, know: 40 + normal(pr) * 8, social: 55 + normal(pr) * 8 },
     trait: { drive: pr(), care: pr(), risk: pr() },
     school: 0, inSchool: false, edu: 0, job: null, income: 0, savings: 0, married: false, partnerAge: null, kids: [], parentsAlive: 2,
-    focus: null, asked: 0, cash: 'local', fled: false, sick: 0, retired: false, flags: {}, log: [], picks: [], decisions: 0, countryLog: [], yearsWar: 0
+    focus: null, asked: 0, seen: {}, cash: 'local', fled: false, sick: 0, retired: false, flags: {}, log: [], picks: [], decisions: 0, countryLog: [], yearsWar: 0
   };
   if (P.undernourish > 15 && wealthU < 0.4) p.stats.health -= 6;
   const feelK = 0.63 * 31 * 1.3 / (P.price_level || 0.5); // 2015 美元 → 現在的體感新臺幣（GS）
@@ -223,11 +231,12 @@ function Life(D, C, opts) {
 
   // ----- 收入 -----
   function earn() {
-    if (p.retired) return p.job && (p.job.kind === 'gov' || p.job.kind === 'private') ? (p.lastInc || 0) * 0.4 : 0;   // GS：退休金＝最後薪水四成，只有公職和公司
+    // GS：做公職或公司滿 10 年，退休金＝最後一份公職或公司薪水的四成；其他人照該國老年年金覆蓋率（ILOSTAT），領到的是人均所得的 15% 左右的基本年金
+    if (p.retired) return (p.formalYears || 0) >= 10 ? (p.lastFormalInc || 0) * 0.4 : p.basicPension ? cy.lvl * 0.15 : 0;
     if (!p.job) return 0;
     const base = cy.lvl * 0.75 * famMult ** 0.35;   // GS：個人收入≈人均 GDP×家境的一部分
-    const eduM = [0.55, 0.85, 1.25, 1.9][p.edu], jobM = p.job.mult;
-    return base * eduM * jobM * (0.85 + p.stats.know / 300);
+    // 收入看做的是哪種工作（text.js 的 jobPay：該國這類職業的收入比），不另外乘學歷倍數；學歷影響的是能做哪些工作
+    return base * p.job.mult * (0.85 + p.stats.know / 300);
   }
 
   // ----- 一年 -----
@@ -253,7 +262,7 @@ function Life(D, C, opts) {
     if ((evs.includes('rec') || evs.includes('dep') || (evs.includes('glob') && cy.tier >= 2)) && p.job && !p.retired) {
       const lay = (evs.includes('dep') ? 0.2 : 0.08) * (p.job.kind === 'gov' ? 0.3 : p.job.kind === 'risky' ? 1.6 : 1);
       if (pr() < lay && (p.flags.layoffs || 0) >= 2 && !p.flags.layoffCap) { p.flags.layoffCap = 1; say('layoffCap', {}, 'pick'); }
-      else if (pr() < lay && (p.flags.layoffs || 0) < 2) { p.flags.laid = 1; p.flags.layoffs = (p.flags.layoffs || 0) + 1; ask(['risky', 'informal', 'farm'].includes(p.job.kind) ? 'bizFail' : 'layoff'); }
+      else if (pr() < lay && (p.flags.layoffs || 0) < 2) { p.flags.laid = 1; p.flags.layoffs = (p.flags.layoffs || 0) + 1; if (p.job.kind === 'risky') ask('bizFail'); else if (p.job.kind === 'informal' || p.job.kind === 'farm') { say('jobLost'); p.jobLosses = (p.jobLosses || 0) + 1; p.job = null; p.flags.unemp = 1; p.flags.laid = 0; } else ask('layoff'); }
     }
   }
 
@@ -282,10 +291,14 @@ function Life(D, C, opts) {
 
   function startJob(kind) {
     const P2 = P.informal || 30;
-    if (!kind) kind = pr() < P2 / 100 * (p.edu >= 2 ? 0.4 : 1) ? 'informal' : pr() < 0.2 ? 'gov' : 'private';
-    const mult = { gov: 0.95, private: 1.0, risky: 0.8 + pr() * 1.6, informal: 0.55, farm: 0.45 }[kind];
-    const pool = T.jobs[kind][Math.min(p.edu, 3)] || T.jobs[kind][0];
-    p.job = { kind, mult, name: pick(pr, pool) };
+    if (!kind) kind = pr() < P2 / 100 * (p.edu >= 2 ? 0.4 : 1) ? (!p.urban && pr() < 0.5 ? 'farm' : 'informal') : pr() < 0.2 ? 'gov' : 'private';
+    // 工作種類：公職略低但穩、自己做的變化大、非正式和務農比受僱的同類工作再少一些（職業的收入差已經在 jobPay 裡，這裡只放種類的差）
+    const mult = { gov: 0.95, private: 1.0, risky: 0.8 + pr() * 1.6, informal: 0.85, farm: 0.8 }[kind];
+    const lv = p.flags.retrained && p.edu < 1 ? 1 : p.edu;   // 進修過：中學以下的人可以應徵中學那一級的工作，學歷照實際念的
+    const pool = T.jobs[kind][Math.min(lv, 3)] || T.jobs[kind][0];
+    const job = pick(pr, pool);
+    // 同一份工作也有人賺得多、有人賺得少（個人差異，GS）
+    p.job = { kind, mult: mult * T.jobPay(job, C) * Math.exp(normal(pr) * 0.2), name: job[0], g: job[1] };
     say('jobStart', { job: p.job.name });
   }
 
@@ -294,7 +307,8 @@ function Life(D, C, opts) {
     // 學業結束
     if (p.inSchool && p.school === 3 && a >= 22) { p.inSchool = false; p.edu = p.flags.voc ? 2 : 3; say(p.flags.voc ? 'vocDone' : 'uniDone'); ask('firstJob'); }
     // 失業
-    if (p.job && !p.retired && !p.flags.laid && pr() < (P.unemp || 6) / 100 * 0.25) { say('jobLost'); p.job = null; p.flags.unemp = 1; }
+    if (p.job && !p.retired && !p.flags.laid && pr() < (P.unemp || 6) / 100 * 0.25) { say('jobLost'); p.job = null; p.flags.unemp = 1; p.jobLosses = (p.jobLosses || 0) + 1; }
+    if (!p.job && !p.inSchool && !p.retired && a >= 60 && !queue.length) { p.retired = true; say('retireEarly'); }
     if (!p.job && !p.inSchool && !p.retired && a >= 18 && a < 60 && !queue.length) { if (p.flags.unemp && pr() < 0.6) { p.flags.unemp = 0; startJob(null); } else if (!p.flags.unemp) startJob(null); }
     // 戀愛結婚
     const smam = P.smam_f || 25;
@@ -326,10 +340,17 @@ function Life(D, C, opts) {
   function money() {
     const inc = earn();
     p.income = inc;
-    if (p.job && !p.retired) p.lastInc = inc;
+    if (p.retired && p.basicPension === undefined) p.basicPension = (p.formalYears || 0) < 10 && pr() < (P.pension_old ?? 50) / 100;
+    if (p.job && !p.retired) { p.lastInc = inc; if (p.job.kind === 'gov' || p.job.kind === 'private') { p.formalYears = (p.formalYears || 0) + 1; p.lastFormalInc = inc; } }
     const living = cy.lvl * 0.25 * famMult ** 0.4;
-    const spend = (p.job && !p.retired ? inc * 0.72 : p.retired ? Math.max(living, inc * 0.9) : living) + p.kids.filter(k => p.year - k < 22).length * cy.lvl * 0.06;
+    // 退休後的花費照這個人原本的收入水準（最後收入的 45%），不是全國一個數；最低是人均所得的一成（2026-11-15 複審：不然學歷低的人晚年幾乎都欠債）
+    const retiredSpend = Math.max(cy.lvl * 0.1, (p.lastInc || living / 0.72) * 0.45);
+    // 養小孩：每個小孩每年取「人均所得的 6%」和「家裡收入的 8%」的低者（收入低的家庭花得少；不然窮國的家庭一輩子都在欠債）
+    const kidCost = Math.min(cy.lvl * 0.06, (inc || living) * 0.08);
+    const spend = (p.job && !p.retired ? inc * 0.72 : p.retired ? retiredSpend : living) + p.kids.filter(k => p.year - k < 22).length * kidCost;
     if (p.age >= 18) p.savings += inc - spend;
+    // 退休後存款用完就停在 0，不再借錢過日子：沒有退休金的長輩多半靠家人接濟、過得很省（GS）
+    if (p.retired && p.savings < 0) { p.savings = 0; if (!p.flags.broke) { p.flags.broke = 1; say(p.kids.length ? 'brokeKids' : 'brokeAlone'); } }
     if (p.savings > 0) p.savings *= 1 + (p.cash === 'local' ? 0.01 : 0.02);
     if (p.savings < -cy.lvl * 3) p.savings = -cy.lvl * 3;
     if (p.age >= 18 && p.savings > (p.peak || 0)) p.peak = p.savings;
@@ -352,9 +373,9 @@ function Life(D, C, opts) {
 
   function death() {
     let q = qx(C, p.year, p.age, p.sex);
-    // GS：健康高的人機率低一點。2026-11-14 實測平均 0.83，加上重病和戰爭，整體比生命表短約 2 歲，校準留到上線後
+    // GS：15 歲以上，健康高的人機率低一點（實測平均約 0.83），再乘 MORT_K 校準
     const hm = clamp(1.6 - p.stats.health / 80, 0.55, 1.8);
-    q *= hm; p.hmSum = (p.hmSum || 0) + hm; p.hmN = (p.hmN || 0) + 1;
+    if (p.age >= 15) { q *= hm * MORT_K; p.hmSum = (p.hmSum || 0) + hm; p.hmN = (p.hmN || 0) + 1; }
     if (p.sick === 1) q = q * 2 + 0.03;
     if (cy.real === false && cy.war === 2 && !p.fled) q += 0.004 * C.zone * 3;   // 推估年份的戰爭另加（真實年份的生命表已含）
     if (pr() < q) {
@@ -371,13 +392,16 @@ function Life(D, C, opts) {
   function autoChoose(c) {
     const os = options(c);
     // 分岔重跑：之後遇到同一種抉擇，沿用玩家原本的選法（選得到的話）
-    if (opts.prefer && T.choices[c.id].size !== 'small' && opts.prefer[c.id] && os.some(o => o.k === opts.prefer[c.id])) return opts.prefer[c.id];
+    // prefer[id] 是陣列時照出現順序：這種抉擇第 n 次出現就用第 n 次的選法，超過就用最後一次的
+    const pv = opts.prefer && T.choices[c.id].size !== 'small' ? opts.prefer[c.id] : null;
+    const want = Array.isArray(pv) ? pv[Math.min((p.seen[c.id] || 0), pv.length - 1)] : pv;
+    if (want && os.some(o => o.k === want)) return want;
     const w = os.map(o => Math.max(0.05, (o.w ? o.w(p, cy) : 1)));
     return os[wpick(pr, w)].k;
   }
   function apply(c, k) {
     const ch = T.choices[c.id], o = ch.opts.find(x => x.k === k);
-    p.decisions++; p.picks.push({ age: p.age, year: p.year, id: c.id, k, auto: !!c.auto });
+    p.decisions++; p.picks.push({ age: p.age, year: p.year, id: c.id, k, auto: !!c.auto }); p.seen[c.id] = (p.seen[c.id] || 0) + 1;
     const res = o.do(p, { pr, cy, stat, say, startJob, C });
     say('picked', { q: ch.title, a: o.label, auto: c.auto, why: c.why }, 'pick');
     if (res) say(res);
@@ -412,10 +436,12 @@ function Life(D, C, opts) {
   function choose(k) { if (!pending) return; const c = pending; pending = null; apply(c, k); return flush(); }
   function setFocus(f) { p.focusPick = f; }
   function setAuto(v) { opts.auto = v; }
+  // 換一條個人運氣（世界和國家的亂數不動）：分岔頁拿同一組 salt 跑兩條路，比的是同一種運氣下選擇的差別
+  function reseed(salt) { pr = rng((seed ^ 0x9E3779B9 ^ Math.imul(salt + 1, 0x85EBCA6B)) >>> 0); }
 
-  return { p, C, step, choose, setFocus, setAuto, birthYear, get pending() { return pending ? describe(pending) : null; } };
+  return { p, C, step, choose, setFocus, setAuto, reseed, birthYear, get pending() { return pending ? describe(pending) : null; } };
 }
 
-const api = { rng, pickCountry, Life, qx, config, parseQuery, MAX_AGE, get NOW() { return NOW; }, get HIST0() { return HIST0; }, get HIST1() { return HIST1; } };
+const api = { rng, pickCountry, Life, qx, config, parseQuery, MAX_AGE, ENGINE_V, setMortK: k => { MORT_K = k; }, get MORT_K() { return MORT_K; }, get NOW() { return NOW; }, get HIST0() { return HIST0; }, get HIST1() { return HIST1; } };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PlayEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

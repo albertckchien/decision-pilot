@@ -10,7 +10,7 @@
  *   初階報告_引擎.gs     規則引擎（Overview）
  *   初階報告_資料.gs     段落庫、國家快照、工具標籤、問題卡提示詞（OV_LIB、OV_QLIB、OV_SNAP、OV_TOOLS、OV_VOCAB、CARD_PROMPT）
  */
-var HEAD = ['email', 'pass_hash', 'salt', 'points', 'status', 'kind', 'created', 'card_uses', 'note'];
+var HEAD = ['email', 'pass_hash', 'salt', 'points', 'status', 'kind', 'created', 'card_uses', 'note', 'from'];
 var SIGNUP_POINTS = 10;       // 新帳號只送一次（intake_form.md 點數表）
 var OVERVIEW_POINTS = 10;     // 初階報告的點數
 var CARD_USES_MAX = 3;        // 一般帳號最多整理 3 次問題卡（試跑帳號不限）
@@ -26,6 +26,7 @@ function accountActions_() {
 function sheet_() {
   var sh = SpreadsheetApp.openById(props_().getProperty('ACCOUNTS_SHEET_ID')).getSheets()[0];
   if (sh.getLastRow() === 0) sh.appendRow(HEAD);
+  else if (sh.getRange(1, HEAD.length).getValue() === '') sh.getRange(1, HEAD.length).setValue(HEAD[HEAD.length - 1]);   // 舊表補上 from 欄的標題
   return sh;
 }
 function normEmail_(e) {
@@ -61,7 +62,7 @@ function adminCreateTestAccounts() {
     var email = normEmail_(raw);
     if (findRow_(email)) { console.log(email + ' 已經有帳號，跳過'); return; }
     var pw = Utilities.getUuid().replace(/-/g, '').slice(0, 12), salt = Utilities.getUuid();
-    sheet_().appendRow([email, hash_(pw, salt), salt, TEST_POINTS, '啟用', '試跑', new Date().toISOString(), 0, '讀書會試跑']);
+    sheet_().appendRow([email, hash_(pw, salt), salt, TEST_POINTS, '啟用', '試跑', new Date().toISOString(), 0, '讀書會試跑', 'trial']);
     console.log(email + '　密碼：' + pw + '　點數：' + TEST_POINTS);
   });
 }
@@ -89,14 +90,23 @@ function signupFinish_(req) {
   var email = normEmail_(req.email), pw = checkPassword_(req.password);
   var cache = CacheService.getScriptCache();
   var code = cache.get('VC_' + email);
+  // 驗證碼錯 5 次就作廢，要重寄（防止猜 6 位數搶別人的 Email）
+  if (code && String(req.code || '').trim() !== code) {
+    var bad = Number(cache.get('VCBAD_' + email) || 0) + 1;
+    if (bad >= 5) { cache.remove('VC_' + email); cache.remove('VCBAD_' + email); throw new Error('驗證碼錯太多次，請重新寄一次'); }
+    cache.put('VCBAD_' + email, String(bad), 600);
+  }
   if (!code || String(req.code || '').trim() !== code) throw new Error('驗證碼不對或已經過期');
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     if (findRow_(email)) throw new Error('這個 Email 已經註冊過了，請直接登入');
     var salt = Utilities.getUuid();
-    sheet_().appendRow([email, hash_(pw, salt), salt, SIGNUP_POINTS, '啟用', '一般', new Date().toISOString(), 0, '']);
+    // from：從哪裡來的，只收小寫英文 1～12 字。play＝從遊戲來；share＝從朋友分享的連結進站（之後自己玩幾局也一直是 share）；trial＝試跑帳號；空白＝沒有或不合格。
+    // 前台同一台瀏覽器每次帶 from 都會覆蓋，記到的是註冊前最後一次的來源
+    var from = /^[a-z]{1,12}$/.test(String(req.from || '')) ? String(req.from) : '';
+    sheet_().appendRow([email, hash_(pw, salt), salt, SIGNUP_POINTS, '啟用', '一般', new Date().toISOString(), 0, '', from]);
   } finally { lock.releaseLock(); }
-  cache.remove('VC_' + email);
+  cache.remove('VC_' + email); cache.remove('VCBAD_' + email);
   return { ok: true, session: newSession_(email), points: SIGNUP_POINTS };
 }
 

@@ -1,3 +1,5 @@
+/* hidden 一律藏起來（.btn、.share-url 有自己的 display，會蓋掉瀏覽器預設的 hidden） */
+[hidden] { display: none !important; }
 /* 隨機投胎（play/）。配色、字體照 site.css。 */
 .play-page .bar-link { white-space: nowrap; }
 #app { max-width: 60rem; margin: 0 auto; padding-bottom: 6rem; }
@@ -120,3 +122,61 @@
 .birth > p.small { margin-top: 0.9rem; }
 .cmp dl.luck { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px dashed var(--line); }
 .cmp dl.luck dt { color: var(--accent); }
+.skiproll { margin-top: 1rem; }
+.dv-note { margin-top: 0.5rem; }
+.share-msg { margin-top: 0.75rem; }
+.luck-box { margin-top: 1.5rem; background: var(--field); color: var(--field-ink); padding: clamp(1.1rem, 3vw, 1.75rem); }
+.luck-box h3 { font-size: var(--step-lead); }
+.luck-box ul { list-style: none; padding: 0; margin: 0.9rem 0 0; display: grid; gap: 0.45rem; }
+.luck-box li b { color: var(--gold); font-variant-numeric: tabular-nums; }
+.luck-box p { margin-top: 0.9rem; color: var(--field-muted); }
+.luck-note { margin-top: 0.6rem; color: var(--field-muted); font-size: var(--step-small); }
+.luck-main { margin-top: 0.9rem; font-family: var(--font-display); font-size: var(--step-lead); }
+.luck-box small { font-size: 0.8em; color: var(--field-muted); font-weight: 400; }
+.luck-box ul.luck-money { margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.18); font-size: var(--step-small); color: var(--field-muted); }
+.luck-box .luck-warn { color: var(--gold); }
+.luck-cta { margin-top: 1rem; }
+.luck-cta .link { color: var(--field-ink); }
+.shared-note { margin-bottom: 0.75rem; color: var(--accent); font-weight: 500; }
+.share-url { display: block; width: 100%; max-width: 32rem; margin-top: 0.5rem; padding: 0.6rem 0.75rem; border: 1px solid var(--line); background: #fff; font-size: var(--step-small); }
+.cmp h4 small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
+.luck-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: var(--step-small); }
+.luck-table th, .luck-table td { text-align: left; vertical-align: top; padding: 0.55rem 0.5rem; border-top: 1px solid rgba(255,255,255,0.18); }
+.luck-table thead th { color: var(--field-muted); font-weight: 500; border-top: 0; }
+.luck-table tbody th { font-weight: 500; color: var(--field-ink); }
+.luck-table td small { display: block; color: var(--field-muted); font-size: 0.85em; }
+.luck-table td.chg { color: var(--gold); font-weight: 700; white-space: nowrap; }
+.luck-table td.lk { color: var(--field-muted); white-space: nowrap; }
+@media (max-width: 640px) {
+  .luck-table thead { display: none; }
+  .luck-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 0.75rem; padding: 0.6rem 0; border-top: 1px solid rgba(255,255,255,0.18); }
+  .luck-table th, .luck-table td { border: 0; padding: 0; }
+  .luck-table tbody th { grid-column: 1 / -1; }
+  .luck-table td.chg, .luck-table td.lk { grid-column: 1 / -1; }
+  .luck-table td:nth-of-type(1)::before { content: '原本：'; color: var(--field-muted); }
+  .luck-table td:nth-of-type(2)::before { content: '改選：'; color: var(--field-muted); }
+}
+/* 50 次的小卡（2026-11-15：文字收進「怎麼算的」，用橫條比） */
+.lk-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin-top: 0.75rem; font-size: var(--step-small); color: var(--field-muted); }
+.lk-legend span::before { content: ''; display: inline-block; width: 0.8em; height: 0.8em; margin-right: 0.35em; vertical-align: -0.05em; }
+.lk-legend .a::before { background: var(--field-muted); }
+.lk-legend .b::before { background: var(--gold); }
+.lk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.6rem; margin-top: 1rem; }
+.lk-card { background: rgba(0,0,0,0.18); padding: 0.75rem 0.85rem; display: grid; gap: 0.35rem; }
+.lk-h { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; font-size: var(--step-small); font-weight: 500; }
+.lk-h em { font-style: normal; font-size: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid rgba(255,255,255,0.35); color: var(--field-muted); white-space: nowrap; }
+.lk-card.chg .lk-h em { background: var(--gold); border-color: var(--gold); color: var(--gold-ink); font-weight: 700; }
+.lk-card.same .lk-h em, .lk-card.noret .lk-h em { border-color: transparent; }
+.lk-bar { display: grid; grid-template-columns: 2.4rem 1fr auto; align-items: center; gap: 0.5rem; font-size: 0.8125rem; }
+.lk-lab { color: var(--field-muted); }
+.lk-track { height: 0.55rem; background: rgba(255,255,255,0.1); }
+.lk-track i { display: block; height: 100%; }
+.lk-bar.a .lk-track i { background: var(--field-muted); }
+.lk-bar.b .lk-track i { background: var(--gold); }
+.lk-val { font-variant-numeric: tabular-nums; white-space: nowrap; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; }
+.lk-more { margin-top: 0.75rem; font-size: 0.8125rem; color: var(--field-muted); }
+.lk-more summary { cursor: pointer; }
+.lk-more .luck-note { margin-top: 0.5rem; font-size: 0.8125rem; }
+.lk-bar.nobar { grid-template-columns: 2.4rem 1fr; }
+.lk-bar.nobar .lk-val { white-space: normal; max-width: none; }
+.lk-card.mixed .lk-h em { border-color: var(--gold); color: var(--gold); }

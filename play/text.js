@@ -47,7 +47,7 @@ const L = {
   // ---------- 小時候 ----------
   born: w => '你出生在' + w.c.name + (w.who.urban ? '的城市' : '的鄉下') + '，是' + (w.who.sex === 'F' ? '女生' : '男生') + '。',
   sibs: '家裡還有 {n} 個兄弟姊妹。',
-  pe0: '爸媽都沒念完中學。',
+  pe0: '爸媽的學歷都在中學以下。',
   pe1: '爸媽念到中學。',
   pe2: '爸媽都念過大學。',
   kid1: '三歲生了一場大病，好在撐過來了。',
@@ -73,7 +73,7 @@ const L = {
   jobStart: '開始工作：{job}。',
   vocDone: '技職學校畢業了。',
   uniDone: '大學畢業了。',
-  jobLost: w => w.who.job && ['risky', 'informal', 'farm'].includes(w.who.job.kind) ? '生意做不下去，收掉了，花了一段時間找下一份工作。' : '工作沒了，花了一段時間找下一份。',
+  jobLost: w => w.who.job && w.who.job.kind === 'risky' ? '生意做不下去，收掉了，花了一段時間找下一份工作。' : w.who.job && ['informal', 'farm'].includes(w.who.job.kind) ? '零工接不到了，花了一段時間找下一份。' : '工作沒了，花了一段時間找下一份。',
   kidBorn: w => kidWord(w.n) + '出生了。',
   kidsGrown: '小孩都長大了，家裡突然安靜下來。',
   parentDied1: '送走了爸媽其中一位。',
@@ -93,9 +93,9 @@ const L = {
   layoffCap: '又碰上一波裁員，這次沒輪到你。',
   picked: w => (w.auto ? '（交給系統，' + (w.why || '照這個人的個性選') + '）' : '你選了：') + w.a,
   uniIn: '考上大學。',
-  uniFail: '大學沒考上，先去工作。',
-  vocIn: '去念技職學校，學一技之長。',
-  workNow: '高中畢業就去工作。',
+  uniFail: '大學沒考上，開始工作。',
+  vocIn: '去念技職學校，學一門專業技術。',
+  workNow: '中學畢業後開始工作。',
   stayOn: '咬牙繼續念，家裡省吃儉用。',
   leftForWork: '休學去工作，幫家裡分擔。',
   married: '結婚了。',
@@ -105,6 +105,9 @@ const L = {
   noKidsPick: '決定不生小孩。',
   laidTake: '拿了資遣費，開始找下一份工作。',
   retrain: '回去進修，學新的東西。',
+  brokeKids: '存款用完了，跟孩子和家人一起過日子。',
+  brokeAlone: '存款用完了，日子過得很省。',
+  retireEarly: '六十歲後沒再找工作，提早退休了。',
   goOwn: '自己出來做。',
   bizClosed: '把生意收了，去找一份領薪水的工作。',
   bizHeld: '咬牙撐過去，生意慢慢回來了。',
@@ -137,14 +140,36 @@ function fmt(key, v) {
   return t.replace(/\{(\w+)\}/g, (_, k) => k === 'c' ? (v.c ? v.c.name : '') : (v[k] ?? ''));
 }
 
-// ---------- 職業：jobs[kind][學歷 0 沒念完中學 / 1 中學 / 2 技職 / 3 大學] ----------
+// ---------- 職業：jobs[kind][學歷 0 中學以下 / 1 中學 / 2 技職 / 3 大學] ----------
+// 每個職業：[名稱, ISCO 大類（1 主管 2 專業 3 技術員及助理專業 4 事務 5 服務銷售 6 農林漁 7 技藝 8 機械操作 9 基層）, 台灣細項職類, 類內加成]
+// 收入＝該國這一大類的平均月薪 ÷ 全體平均（ILOSTAT；台灣用勞動部，能對到細項就用細項）× 類內加成 × 工作種類 × 個人差異。
+// 類內加成只給收入明顯偏離大類平均的職業（醫師、老師、創業），其他都是 1。2026-11-15 用戶：倍數要照各國資料，不能全世界一套。
+const W = { clean: '清潔及家事工作人員(含建築清潔工、房務人員)', labor: '勞力工(含理貨員、行李搬運工)', shop: '商店銷售及展售人員(含門市店長)',
+  moto: '機車送件駕駛人員', build: '其他營建構造人員(含鷹架工、鋁門窗及廣告招牌製作安裝)', car: '車輛維修人員(含自行車、機車、汽車、火車)',
+  mach: '產業用機器維修人員', farm: '園藝及農牧業生產人員', cook: '廚師(含廚房領班)' };
 const jobs = {
-  gov: [['清潔隊員', '學校工友'], ['基層公務員', '郵局櫃員', '軍人'], ['護理師', '基層公務員', '警察'], ['公務員', '老師', '醫師']],
-  private: [['工廠作業員', '店員', '送貨員', '工地工人'], ['工廠技術員', '門市店員', '業務', '司機'], ['技術員', '會計助理', '廚師', '美髮師'], ['工程師', '會計', '行銷', '研究員']],
-  risky: [['擺攤', '跑外送'], ['開小吃店', '做網拍'], ['開工作室', '自己接案'], ['創業', '新創公司員工']],
-  informal: [['打零工', '路邊攤', '幫人打掃', '種田'], ['打零工', '攤販', '臨時工', '種田'], ['接零工', '攤販'], ['自己接案', '家教']],
-  farm: [['種田', '放牧'], ['種田', '養魚'], ['種田'], ['農場管理']]
+  gov: [[['清潔隊員', 9, W.clean], ['學校工友', 9, W.labor]],
+        [['公所行政人員', 4], ['郵局櫃員', 4, '銀行、郵局櫃台事務人員'], ['軍人', 5]],
+        [['護理師', 2, '護理人員'], ['消防員', 5], ['警察', 5], ['技術員', 3, '電機、電子技術員']],
+        [['政策規劃人員', 2], ['老師', 2, null, 0.9]]],
+  private: [[['工廠作業員', 8, '組裝(現場)人員'], ['店員', 5, W.shop], ['送貨員', 8, W.moto], ['工地工人', 9, W.labor]],
+            [['工廠技術員', 3, '品管、工管及生管技術員'], ['門市店員', 5, W.shop], ['業務', 3, '工商業銷售代表(含業務員)'], ['司機', 8, '小客、貨車駕駛人員']],
+            [['機電技師', 7, W.mach], ['電工', 7, '電力、電子、資通訊設備裝修人員(含水電工)'], ['廚師', 5, W.cook], ['美髮師', 5, '美髮、美容及造型設計人員'], ['護理師', 2, '護理人員'], ['會計助理', 4, '會計助理、簿記、出納']],
+            [['工程師', 2, '電機、電子工程師'], ['會計', 2, '會計人員'], ['行銷企劃', 2, '廣告及行銷專業人員(含企劃)'], ['研究員', 2, '人文社會科學研究人員'], ['行政', 4, '辦公室綜合事務人員(含資料登錄、一般事務秘書)'], ['人資', 2, '人力資源管理師'], ['設計師', 2, '平面及多媒體設計師'], ['軟體工程師', 2, '資訊及通訊專業人員(含系統分析、程式設計、資料庫及網路專業人員)'], ['醫師', 2, '醫師', 2, true]]],
+  risky: [[['擺攤', 9], ['跑外送', 8, W.moto]], [['開小吃店', 5, W.cook], ['做網拍', 5, W.shop]],
+          [['開工作室', 3], ['自己接案', 3], ['開修車廠', 7, W.car]], [['創業', 1, null, 0.8], ['新創公司員工', 2, '資訊及通訊專業人員(含系統分析、程式設計、資料庫及網路專業人員)']]],
+  informal: [[['打零工', 9, W.labor], ['路邊攤', 9], ['幫人打掃', 9, W.clean]], [['打零工', 9, W.labor], ['攤販', 9], ['臨時工', 9, W.labor]],
+             [['接零工', 9, W.labor], ['攤販', 9], ['修理工', 7, W.car]], [['自己接案', 3], ['家教', 2, '補教業教師', 0.6, true]]],
+  farm: [[['種田', 6, W.farm], ['放牧', 6, W.farm]], [['種田', 6, W.farm], ['養魚', 6, W.farm]], [['種田', 6, W.farm], ['農機修理', 7, W.mach]], [['農場管理', 6, W.farm, 1.3]]]
 };
+// 這個人在這個國家做這份工作，收入是全體平均的幾倍（不含工作種類和個人差異）
+function jobPay(job, C) {
+  const [, g, tw, f, inDetail] = job;
+  const useTw = C.occTw && tw && C.occTw[tw];
+  const r = useTw || (C.occ && C.occ[g - 1]) || 1;
+  // inDetail＝台灣細項已經是這個職業本身的收入（醫師、家教），用細項時就不再乘類內加成
+  return r * (useTw && inDetail ? 1 : (f || 1));
+}
 
 // ---------- 每年的重心（不讓玩家選，系統照個性分配） ----------
 const focus = {
@@ -187,19 +212,19 @@ function uniChance(p, C) { return shift((C.p.edu_tertiary || 10) / 100 * UNI_SCA
 // opts: k、label、hint、when(p,cy) 出現的條件、w(p,cy) 交給系統時的權重、do(p,ctx) 回傳結果句的 key
 const choices = {
   after18: {
-    title: '高中畢業了，接下來呢？', size: 'big',
+    title: '中學畢業了，接下來呢？', size: 'big',
     desc: '十八歲。家裡的狀況、你的成績，都會影響接下來走得多順。',
     stat: w => '在' + w.c.name + '，25 歲以上的人大約 ' + Math.round(w.c.p.edu_tertiary || 10) + '% 有大學以上學歷。',
     opts: [
-      { k: 'uni', label: '考大學', hint: '多念四年，之後薪水通常比較高；要先花錢，也不一定考得上', w: p => 0.4 + p.stats.know / 80 + p.wealthU,
+      { k: 'uni', label: '考大學', hint: '再念四年，學費較高，要考得上；醫師、工程師這類工作要學位', w: p => 0.4 + p.stats.know / 80 + p.wealthU,
         do: (p, x) => {
           const pIn = uniChance(p, x.C);
           if (x.pr() < pIn) { p.inSchool = true; p.school = 3; p.savings -= x.cy.lvl * 0.3; return 'uniIn'; }
           p.inSchool = false; p.edu = 1; x.startJob(null); return 'uniFail';
         } },
-      { k: 'voc', label: '念技職', hint: '學一技之長，四年後出來工作', w: () => 0.8,
+      { k: 'voc', label: '念技職', hint: '再念四年，學費比大學少；出來做護理、機電這類技術工作', w: () => 0.8,
         do: (p, x) => { p.inSchool = true; p.school = 3; p.flags.voc = 1; p.savings -= x.cy.lvl * 0.15; return 'vocIn'; } },
-      { k: 'work', label: '直接工作', hint: '早點賺錢，但之後比較難往上爬', w: p => 1.2 - p.wealthU,
+      { k: 'work', label: '直接工作', hint: '馬上開始賺錢、存錢；之後找的多半是不要求文憑的工作', w: p => 1.2 - p.wealthU,
         do: (p, x) => { p.inSchool = false; p.edu = 1; x.startJob(null); return 'workNow'; } }
     ]
   },
@@ -209,16 +234,16 @@ const choices = {
     opts: [
       { k: 'gov', label: '考公職', hint: '穩定，薪水普通，不太會被裁員', w: p => 1 - p.trait.risk * 0.5, do: (p, x) => { x.startJob('gov'); } },
       { k: 'private', label: '進公司', hint: '薪水看表現，景氣差時可能被裁', w: () => 1.2, do: (p, x) => { x.startJob('private'); } },
-      { k: 'risky', label: '去新創或自己做', hint: '可能賺很多，也可能很慘', w: p => 0.2 + p.trait.risk, do: (p, x) => { x.startJob('risky'); } }
+      { k: 'risky', label: '去新創或自己做', hint: '可能賺很多，也可能很慘；沒有公司的退休金', w: p => 0.2 + p.trait.risk, do: (p, x) => { x.startJob('risky'); } }
     ]
   },
   stayInSchool: {
     title: '家裡缺錢，要不要休學？', size: 'big',
     desc: '十五歲。爸媽沒有開口，但你知道家裡快撐不住了。',
     opts: [
-      { k: 'stay', label: '繼續念', hint: '念完中學，之後的路比較寬', w: p => 0.5 + p.stats.know / 100,
+      { k: 'stay', label: '繼續念', hint: '家裡要再撐三年；十八歲時再決定要不要往上念', w: p => 0.5 + p.stats.know / 100,
         do: (p, x) => { x.stat('know', 3); x.stat('happy', -2); return 'stayOn'; } },
-      { k: 'work', label: '休學去工作', hint: '馬上能幫家裡，但學歷停在這裡', w: p => 1 - p.wealthU,
+      { k: 'work', label: '休學去工作', hint: '馬上能幫家裡分擔；之後不會再回學校', w: p => 1 - p.wealthU,
         do: (p, x) => { p.inSchool = false; p.school = 1; p.edu = 0; p.flags.dropout = 1; p.flags.childWork = 1; p.flags.leftToWork = 1; x.stat('know', -2); return 'leftForWork'; } }
     ]
   },
@@ -232,7 +257,7 @@ const choices = {
         do: (p, x) => { p.married = true; p.partnerAge = p.age + Math.round(x.pr() * 6 - 2); x.stat('happy', 6); x.stat('social', 3); return 'married'; } },
       { k: 'wait', label: '還不想', hint: '再等等；這種機會不會一直有，錯過兩次可能就一個人過', w: () => 1,
         do: (p, x) => { p.flags.marryWait = p.age + 3; x.stat('happy', -2); return 'notYet'; } },
-      { k: 'single', label: '一個人過', hint: '自由，老了可能比較孤單', w: p => p.age >= 35 ? 0.6 : 0.1, when: p => p.age >= 28,
+      { k: 'single', label: '一個人過', hint: '自由，凡事自己作主', w: p => p.age >= 35 ? 0.6 : 0.1, when: p => p.age >= 28,
         do: (p, x) => { p.flags.single = 1; return 'stayingSingle'; } }
     ]
   },
@@ -254,9 +279,9 @@ const choices = {
     desc: '景氣不好，主管把你叫進會議室。',
     opts: [
       { k: 'take', label: '拿資遣費，找下一份', hint: '先有一筆錢，但可能要找一陣子', w: () => 1.5,
-        do: (p, x) => { p.savings += x.cy.lvl * 0.3; p.job = null; p.flags.unemp = 1; p.flags.laid = 0; x.stat('happy', -5); return 'laidTake'; } },
-      { k: 'retrain', label: '回去進修，換一行', hint: '花一年和一筆錢，之後的路可能更寬', w: p => p.stats.know / 60,
-        do: (p, x) => { p.job = null; p.flags.unemp = 1; p.flags.laid = 0; p.savings -= x.cy.lvl * 0.2; x.stat('know', 8); if (p.edu < 2) p.edu = 2; return 'retrain'; } },
+        do: (p, x) => { p.jobLosses = (p.jobLosses || 0) + 1; p.savings += x.cy.lvl * 0.3; p.job = null; p.flags.unemp = 1; p.flags.laid = 0; x.stat('happy', -5); return 'laidTake'; } },
+      { k: 'retrain', label: '回去進修，換一行', hint: '花一年和一筆錢學新的技能，下一份工作可以往上找一級', w: p => p.stats.know / 60, when: p => p.age < 58,
+        do: (p, x) => { p.jobLosses = (p.jobLosses || 0) + 1; p.job = null; p.flags.unemp = 1; p.flags.laid = 0; p.savings -= x.cy.lvl * 0.2; x.stat('know', 8); p.flags.retrained = 1; return 'retrain'; } },
       { k: 'own', label: '自己出來做', hint: '沒有老闆，也沒有保障', w: p => p.trait.risk,
         do: (p, x) => { p.flags.laid = 0; x.startJob('risky'); return 'goOwn'; } }
     ]
@@ -266,9 +291,9 @@ const choices = {
     desc: '景氣不好，客人少了一大半，每個月都在賠錢。',
     opts: [
       { k: 'close', label: '收掉，去找工作', hint: '少賠一點，但要從頭開始', w: () => 1.2,
-        do: (p, x) => { p.savings -= x.cy.lvl * 0.2; p.job = null; p.flags.unemp = 1; p.flags.laid = 0; x.stat('happy', -4); return 'bizClosed'; } },
+        do: (p, x) => { p.jobLosses = (p.jobLosses || 0) + 1; p.savings -= x.cy.lvl * 0.2; p.job = null; p.flags.unemp = 1; p.flags.laid = 0; x.stat('happy', -4); return 'bizClosed'; } },
       { k: 'hold', label: '咬牙撐下去', hint: '撐過了就是你的；撐不過會賠更多', w: p => 0.4 + p.trait.risk,
-        do: (p, x) => { p.flags.laid = 0; if (x.pr() < 0.5) { x.stat('happy', -2); return 'bizHeld'; } p.savings -= x.cy.lvl * 0.6; p.job = null; p.flags.unemp = 1; x.stat('happy', -8); return 'bizLost'; } }
+        do: (p, x) => { p.flags.laid = 0; if (x.pr() < 0.5) { x.stat('happy', -2); return 'bizHeld'; } p.savings -= x.cy.lvl * 0.6; p.jobLosses = (p.jobLosses || 0) + 1; p.job = null; p.flags.unemp = 1; x.stat('happy', -8); return 'bizLost'; } }
     ]
   },
   war: {
@@ -330,6 +355,6 @@ const choices = {
   }
 };
 
-const api = { fmt, jobs, focus, focusFor, causes, cause, choices, uniChance, UNI_SCALE, lines: L };
+const api = { fmt, jobs, jobPay, focus, focusFor, causes, cause, choices, uniChance, UNI_SCALE, lines: L };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PlayText = api;
 })(typeof window !== 'undefined' ? window : globalThis);

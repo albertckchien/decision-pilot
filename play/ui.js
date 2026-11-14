@@ -4,13 +4,18 @@
 const E = window.PlayEngine, T = window.PlayText;
 const $ = id => document.getElementById(id);
 const SPEEDS = [900, 450, 180], SPEED_LABEL = ['1×', '2×', '4×'];
-const EDU = ['沒念完中學', '中學', '技職', '大學'];
+const EDU = ['中學以下', '中學', '技職', '大學'];
 let D = null, index = null, cache = {};
 let S = null;   // 這一局：{seed, age, iso, C, L, picks:[], peak, timer, speed, paused, lastLog, lastYr}
 
 // ---------- 資料 ----------
 // 資料檔帶版本號：重新打包後舊快取的資料不會配上新程式
-const DATA_V = '20261114h';
+const DATA_V = '20261115c';  // 資料包重新打包時才換
+// 分享連結帶的版本＝資料版本＋引擎版本，任一個換了，朋友打開時會提示可能不一樣
+const SHARE_V = () => DATA_V + '-' + E.ENGINE_V;
+// 漏斗：網址上的 from 合格就沿用（例如分享進來的 share），不然是 play；連結一律用 URL 物件組
+const FROM = (() => { const f = new URLSearchParams(location.search).get('from'); return f && /^[a-z]{1,12}$/.test(f) ? f : 'play'; })();
+function beginLink() { const u = new URL('../begin.html', location.href); u.searchParams.set('from', FROM); return u.href; }
 const j = u => fetch(u + '?v=' + DATA_V).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 function boot() {
   return Promise.all([j('data/rules.json'), j('data/vdem.json'), j('data/index.json')]).then(([rules, vdem, idx]) => { D = { rules, vdem }; index = idx; E.config(idx); });
@@ -19,6 +24,8 @@ function country(iso) { return cache[iso] ? Promise.resolve(cache[iso]) : j('dat
 const newLife = (C, age, seed, extra) => E.Life(Object.assign({}, D), C, Object.assign({ age, seed }, extra || {}));
 
 // ---------- 小工具 ----------
+// 螢幕閱讀器：逐年那一串不念（feed 沒有 aria-live），只在出生、抉擇、結局、分岔時念一句
+function announce(t) { const r = $('sr'); r.textContent = ''; setTimeout(() => { r.textContent = t; }, 50); }
 function show(id) { document.querySelectorAll('.scr').forEach(s => { s.hidden = s.id !== id; }); window.scrollTo(0, 0); }
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -33,18 +40,20 @@ function births(iso, birthYear) {
   const tot = index.countries.reduce((s, c) => s + (c.b[i] || 0), 0), me = index.countries.find(c => c.iso === iso);
   return me ? (me.b[i] || 0) / tot * 100 : 0;
 }
-const famLabel = p => p.parentEdu === 2 ? '爸媽都念過大學' : p.parentEdu === 1 ? '爸媽念到中學' : '爸媽沒念完中學';
+const famLabel = p => p.parentEdu === 2 ? '爸媽都念過大學' : p.parentEdu === 1 ? '爸媽念到中學' : '爸媽的學歷在中學以下';
 const jobLabel = p => p.retired ? '退休' : p.job ? p.job.name : p.inSchool ? '還在念書' : p.age < 18 ? '還是小孩' : '沒有工作';
 const jobFinal = p => p.inSchool ? '還在念書' : p.job ? '最後一份工作：' + p.job.name + (p.retired ? '（已退休）' : '') : (p.retired ? '退休' : '沒有工作');
+const shortLife = p => !p.alive && p.age < 5;   // 5 歲前走的局（分享文字、落地提示共用）
 const famNow = p => (p.married ? '結婚' : '沒結婚') + '，' + (p.kids.length ? p.kids.length + ' 個小孩' : '沒有小孩');
 
 // ---------- 1. 開始 ----------
-function start(age, fixedSeed) {
+function start(age, fixedSeed, shared) {
   const seed = fixedSeed != null ? fixedSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
-  S = { seed, age, picks: [], peak: 0, timer: null, speed: 0, paused: false, lastLog: 0, lastYr: null };
+  S = { seed, age, picks: [], peak: 0, timer: null, speed: 0, paused: false, lastLog: 0, lastYr: null, games: (S ? S.games : 0) + 1, skipRoll: false, shared: !!shared };
   const r = E.rng(seed ^ 0xC0FFEE);
   S.iso = E.pickCountry(index, E.NOW - age, r);
   show('s-born'); $('birth').hidden = true; $('roll').classList.remove('landed'); $('roll-label').textContent = '抽一個國家⋯';
+  $('b-skiproll').hidden = S.games < 2;   // 第一局保留懸念，第二局起可以跳過
   country(S.iso).then(C => { S.C = C; roll(() => birthCard()); }).catch(fail);
 }
 function roll(done) {
@@ -52,6 +61,7 @@ function roll(done) {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let n = 0; const total = reduce ? 1 : 16;
   (function tick() {
+    if (S.skipRoll) n = total;
     if (n++ >= total) { out.textContent = S.C.name; out.classList.add('landed'); $('roll-label').textContent = (E.NOW - S.age) + ' 年，你出生在'; return setTimeout(done, reduce ? 0 : 350); }
     out.textContent = names[Math.floor(Math.random() * names.length)];
     setTimeout(tick, 40 + n * n * 1.1);
@@ -74,8 +84,18 @@ function birthCard() {
   const odds = pct >= 1 ? '每 100 個有 ' + Math.round(pct) + ' 個' : pct >= 0.1 ? '每 100 個有 ' + pct.toFixed(1) + ' 個' : pct * 100 >= 1 ? '每 1 萬個有 ' + Math.round(pct * 100) + ' 個' : '每 1 萬個不到 1 個';
   $('birth-odds').textContent = (early ? '以 ' + y0 + ' 年出生的嬰兒估算：' : '跟你同一年出生的嬰兒，') + odds + '生在' + C.name + '。';
   $('birth-money').textContent = '之後畫面上的錢都「折台幣」：照' + C.name + '當地的物價，換成在台灣大約等於多少，不是匯率。';
-  $('birth').hidden = false;
+  $('birth').hidden = false; $('b-skiproll').hidden = true;
+  // 分享進來的第一局：說明這是朋友的一生（5 歲前走的局換一句，不先講結局細節）
+  const sh = $('shared-note');
+  const first = S.shared && S.games === 1;
+  $('dv-note').hidden = !(first && S.dvOld);
+  if (first) {
+    // 5 歲前走的局：先試跑一份（5 歲前沒有抉擇，結果一定一樣）；界線跟分享文字一樣用 age < 5
+    const T0 = newLife(S.C, S.age, S.seed); while (T0.p.alive && T0.p.age < 5) T0.step();
+    sh.hidden = false; sh.textContent = shortLife(T0.p) ? '分享的這一生很短，孩子在幼年就走了。' : '這是朋友分享的出生。之後的抉擇換你選，結局可能跟朋友不一樣；看完可以抽你自己的。';
+  } else sh.hidden = true;
   $('b-live').focus({ preventScroll: true });
+  announce((sh.hidden ? '' : sh.textContent) + ($('dv-note').hidden ? '' : $('dv-note').textContent) + (E.NOW - S.age) + ' 年，你出生在' + C.name + '。' + $('birth-odds').textContent);
 }
 
 // ---------- 2. 過一生 ----------
@@ -126,6 +146,7 @@ function ask(c) {
   box.innerHTML = '<h3>' + esc(c.title) + '</h3><p class="desc">' + esc(c.desc) + '</p>' + (c.stat ? '<p class="stat">' + esc(c.stat) + '</p>' : '') +
     '<div class="opts">' + c.opts.map(o => '<button class="opt" data-k="' + esc(o.k) + '"><b>' + esc(o.label) + '</b>' + (o.hint ? '<span>' + esc(o.hint) + '</span>' : '') + '</button>').join('') + '</div>';
   box.hidden = false;
+  announce('要做選擇了：' + c.title);
   box.querySelectorAll('.opt').forEach(b => { b.onclick = () => {
     const k = b.dataset.k, o = c.opts.find(x => x.k === k);
     S.picks.push({ age: S.L.p.age, year: S.L.p.year, id: c.id, title: c.title, k, label: o.label, opts: c.opts });
@@ -147,7 +168,7 @@ function skip() {
 function summary(L, peak) {
   const p = L.p, last = p.log[p.log.length - 1];
   return { age: p.age, year: p.year, cause: T.causes[p.cause] || '', end: last ? last.text : '', peak: money(L, Math.max(peak, 0)), left: money(L, Math.max(p.savings, 0)),
-    edu: EDU[p.edu] || '', job: jobFinal(p), fam: famNow(p), peakN: peak, leftN: p.savings };
+    edu: EDU[p.edu] || '', job: jobFinal(p), fam: famNow(p), peakN: Math.max(peak, 0), leftN: Math.max(p.savings, 0) };
 }
 function end() {
   clearTimeout(S.timer);
@@ -183,44 +204,150 @@ function end() {
     pk.opts.filter(o => o.k !== pk.k).forEach(o => { const b = el('button', '', '改成「' + esc(o.label) + '」'); b.onclick = () => branch(i, o); alt.appendChild(b); });
     li.appendChild(alt); box.appendChild(li);
   });
-  $('e-h').focus && $('e-h').setAttribute('tabindex', '-1');
+  $('e-h').setAttribute('tabindex', '-1'); $('e-h').focus({ preventScroll: true });
+  announce('這一生結束了：' + s.end);
+  // 2 分享框每局重來
+  $('share-msg').textContent = ''; $('share-url').hidden = true; $('share-url').value = '';
 }
 
 // ---------- 4. 另一條路 ----------
-function branch(i, alt) {
-  const pk = S.picks[i], prefer = {};
-  S.picks.forEach(x => { if (!(x.id in prefer)) prefer[x.id] = x.k; });
-  prefer[pk.id] = alt.k;
+const LUCK_RUNS = 50;   // 分岔時用幾種不同的個人運氣，兩條路各跑一次（配對比較）
+// 回到第 i 個抉擇，改選 k；salt 是 null 時照原本的運氣往下跑，有數字時從那個抉擇起換一條個人運氣
+function runPath(i, k, salt) {
+  const pk = S.picks[i], prefer = {}, all = S.L.p.picks;
+  all.forEach(x => { (prefer[x.id] = prefer[x.id] || []).push(x.k); });
+  // 分岔的那一次換成新選項：它是這種抉擇的第幾次出現
+  const at = all.findIndex(x => !x.auto && x.id === pk.id && x.year === pk.year && x.k === pk.k);
+  if (at >= 0) prefer[pk.id][all.slice(0, at).filter(x => x.id === pk.id).length] = k; else prefer[pk.id] = [k];
   const L = newLife(S.C, S.age, S.seed, { prefer });
   let q = 0, out = L.step(), guard = 0;
   while (L.p.alive && guard++ < 600) {
     if (out && out.choice) {
-      let k;
-      if (q < i) k = S.picks[q].k; else { k = alt.k; L.setAuto(true); }
-      if (!out.choice.opts.some(o => o.k === k)) k = out.choice.opts[0].k;
-      q++; out = L.choose(k); continue;
+      let kk;
+      if (q < i) kk = S.picks[q].k; else { if (salt != null) L.reseed(salt); kk = k; L.setAuto(true); }
+      if (!out.choice.opts.some(o => o.k === kk)) kk = out.choice.opts[0].k;
+      q++; out = L.choose(kk); continue;
     }
     out = L.step();
   }
-  const a = summary(S.L, S.L.p.peak || 0), b = summary(L, L.p.peak || 0);
+  return L;
+}
+const median = a => { const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+// 50 次裡兩條路逐項比：同一組運氣出發，A、B 各跑一遍，看每一項是不是這個選擇改變的（2026-11-15 用戶選的理念：只說改變了什麼，不判斷哪個比較好）
+// 每一項三種判斷：same＝兩邊完全一樣；chg＝一面倒地偏高或偏低，而且差得夠多；none＝看不出是選擇造成的
+function signTest(a, b) {   // 配對比較：B 比 A 高幾次、低幾次；差距大於 2.5×√（不一樣的次數）才算一面倒
+  let w = 0, l = 0;
+  a.forEach((x, k) => { if (b[k] > x) w++; else if (b[k] < x) l++; });
+  return { w, l, same: w + l === 0, lopsided: w + l >= 5 && Math.abs(w - l) >= 2.5 * Math.sqrt(w + l) };
+}
+const GROUP = ['沒有工作', '主管', '專業人員', '技術員', '事務', '服務銷售', '農林漁', '技藝', '機械操作', '基層勞動'];
+function luckStats(i, alt) {
+  const pk = S.picks[i], A = [], B = [];
+  for (let s = 0; s < LUCK_RUNS; s++) { A.push(runPath(i, pk.k, s)); B.push(runPath(i, alt.k, s)); }
+  const f = (arr, fn) => arr.map(L => fn(L.p));
+  const mean = a => a.length ? a.reduce((u, v) => u + v, 0) / a.length : 0;
+  const q = (a, x) => { const b = a.slice().sort((u, v) => u - v); return b[Math.min(b.length - 1, Math.floor(b.length * x))]; };
+  // 差得多又一面倒＝選擇改變的；差得多但這次高下次低＝時高時低（多半是運氣）；本來就沒差多少＝差不多
+  const judge = (t, bigEnough) => t.same ? 'same' : !bigEnough ? 'none' : t.lopsided ? 'chg' : 'mixed';
+  // 工作：分岔後各自擲骰，連換工作都會抽到不同職業，所以比兩邊「最後一份工作」職業大類的分布差多少（0～1；同選項換運氣時 99% 在 0.28 以下）
+  const grp = p => p.job ? p.job.g || 0 : 0;
+  const gA = f(A, grp), gB = f(B, grp);
+  const dist = arr => { const c = {}; arr.forEach(g => { c[g] = (c[g] || 0) + 1 / arr.length; }); return c; };
+  const dA = dist(gA), dB = dist(gB), keys = [...new Set([...Object.keys(dA), ...Object.keys(dB)])];
+  const jobDiff = keys.reduce((t, g) => t + Math.abs((dA[g] || 0) - (dB[g] || 0)), 0) / 2;
+  const top = gs => { const c = {}; gs.forEach(g => { c[g] = (c[g] || 0) + 1; }); return Object.entries(c).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([g, n]) => [GROUP[g], n]); };
+  // 收入：最後一份工作的年收入；中位數差 10% 以上才算差得夠多
+  const inc = [f(A, p => p.lastInc || 0), f(B, p => p.lastInc || 0)], mi = inc.map(v => median(v));
+  // 失業：平均差 0.2 次以上；家庭：結婚比例差 10 個百分點或小孩差 0.3 個以上；壽命：中位數差 1 歲以上（老年時 1 年就是大差別）
+  const loss = [f(A, p => p.jobLosses || 0), f(B, p => p.jobLosses || 0)];
+  const mar = [f(A, p => p.married ? 1 : 0), f(B, p => p.married ? 1 : 0)], kid = [f(A, p => p.kids.length), f(B, p => p.kids.length)];
+  const age = [f(A, p => p.age), f(B, p => p.age)];
+  // 晚年存款用完：只算活到退休的人
+  const ret = [A.filter(L => L.p.retired), B.filter(L => L.p.retired)];
+  const broke = ret.map(arr => arr.map(L => L.p.flags.broke ? 1 : 0));
+  const pairedBroke = [f(A, p => p.retired ? (p.flags.broke ? 1 : 0) : 0), f(B, p => p.retired ? (p.flags.broke ? 1 : 0) : 0)];
+  const famJ = (() => { const t1 = signTest(mar[0], mar[1]), t2 = signTest(kid[0], kid[1]);
+    if (t1.same && t2.same) return 'same';
+    const big = Math.abs(mean(mar[0]) - mean(mar[1])) >= 0.1 || Math.abs(mean(kid[0]) - mean(kid[1])) >= 0.3;
+    return (t1.lopsided && Math.abs(mean(mar[0]) - mean(mar[1])) >= 0.1) || (t2.lopsided && Math.abs(mean(kid[0]) - mean(kid[1])) >= 0.3) ? 'chg' : big ? 'mixed' : 'none'; })();
+  const brokeJ = !ret[0].length && !ret[1].length ? 'noret' : judge(signTest(pairedBroke[0], pairedBroke[1]), Math.abs(mean(broke[0]) - mean(broke[1])) >= 0.1);
+  return {
+    L0: A[0],
+    rows: [
+      { k: '最後一份工作（看職業大類）', a: top(gA), b: top(gB), j: gA.every((g, k) => g === gB[k]) ? 'same' : jobDiff >= 0.35 ? 'chg' : 'none', kind: 'job' },
+      { k: '最後一份工作的年收入（折台幣）', a: inc[0], b: inc[1], j: judge(signTest(inc[0], inc[1]), Math.abs(mi[1] - mi[0]) >= 0.1 * Math.max(mi[0], mi[1], 1)), kind: 'money', q },
+      { k: '被裁員或失業', a: mean(loss[0]), b: mean(loss[1]), j: judge(signTest(loss[0], loss[1]), Math.abs(mean(loss[0]) - mean(loss[1])) >= 0.2), kind: 'times' },
+      { k: '家庭（結婚、小孩）', a: [mean(mar[0]), mean(kid[0])], b: [mean(mar[1]), mean(kid[1])], j: famJ, kind: 'family' },
+      { k: '活到幾歲', a: median(age[0]), b: median(age[1]), j: judge(signTest(age[0], age[1]), Math.abs(median(age[0]) - median(age[1])) >= 1), kind: 'age' },
+      { k: '晚年存款用完（活到退休的人裡）', a: ret[0].length ? mean(broke[0]) : null, b: ret[1].length ? mean(broke[1]) : null, j: brokeJ, kind: 'pct' }
+    ]
+  };
+}
+function branch(i, alt) {
+  const pk = S.picks[i];
   show('s-branch');
   $('br-where').textContent = '回到 ' + pk.age + ' 歲：' + pk.title;
   $('br-h').textContent = '如果當初選了「' + alt.label + '」';
-  const better = (x, y, hi) => (hi ? x > y : x < y) ? ' class="up"' : '';
+  $('br-luck').innerHTML = '<p class="luck-main">計算中⋯</p>'; $('br-cmp').innerHTML = ''; $('br-diff').innerHTML = '';
+  setTimeout(() => branchCalc(i, alt), 30);   // 101 局在手機上可能要半秒，先讓畫面換過來
+}
+function branchCalc(i, alt) {
+  const pk = S.picks[i];
+  // 兩欄用同一種跑法：都用你原本的運氣出發，選完之後系統代選（左欄不用你實際那一生，免得把你後來的選擇算成這個抉擇的差別）
+  const LA = runPath(i, pk.k, null), L = runPath(i, alt.k, null);
+  const a = summary(LA, LA.p.peak || 0), b = summary(L, L.p.peak || 0);
+  // 運氣重抽 50 次，兩條路各走一遍：每一項一張小卡（判斷標籤＋原本／改選兩條橫條），說明收進「怎麼算的」（2026-11-15 用戶：文字太多，多用表格圖表）
+  const r = luckStats(i, alt), n = LUCK_RUNS, L0 = r.L0;
+  const pct = v => Math.round(v * 100) + '%';
+  const JL = { chg: '選擇改變的', mixed: '時高時低', none: '差不多', same: '兩邊一樣', noret: '沒有人活到退休' };
+  // 每一項：兩邊要畫的數值（橫條長度）和要寫的字
+  const viz = x => {
+    if (x.kind === 'job') {
+      const s = v => [null, v.length ? v.map(([g, c]) => esc(g) + ' ' + pct(c / n)).join('、') : '—'];   // 不同類別的比例不能比長度，只寫字
+      return [s(x.a), s(x.b)];
+    }
+    if (x.kind === 'money') { const ma = median(x.a), mb = median(x.b); return [[ma, esc(money(L0, ma))], [mb, esc(money(L0, mb))]]; }
+    if (x.kind === 'times') return [[x.a, x.a.toFixed(1) + ' 次'], [x.b, x.b.toFixed(1) + ' 次']];
+    if (x.kind === 'family') return [[x.a[0], '結婚 ' + pct(x.a[0]) + '・' + x.a[1].toFixed(1) + ' 個小孩'], [x.b[0], '結婚 ' + pct(x.b[0]) + '・' + x.b[1].toFixed(1) + ' 個小孩']];
+    if (x.kind === 'age') return [[x.a, x.a + ' 歲'], [x.b, x.b + ' 歲']];
+    return [[x.a || 0, x.a == null ? '—' : pct(x.a)], [x.b || 0, x.b == null ? '—' : pct(x.b)]];
+  };
+  const title = { job: '最常做的工作', money: '最後一份工作的年收入', times: '被裁員或失業（平均）', family: '家庭', age: '活到幾歲（中位數）', pct: '晚年存款用完' };
+  const cards = r.rows.map(x => {
+    const [[va, ta], [vb, tb]] = viz(x), mx = Math.max(va || 0, vb || 0) || 1;
+    const bar = (cls, lab, v, t) => v == null ? '<div class="lk-bar nobar ' + cls + '"><span class="lk-lab">' + lab + '</span><span class="lk-val">' + t + '</span></div>'
+      : '<div class="lk-bar ' + cls + '"><span class="lk-lab">' + lab + '</span><span class="lk-track"><i style="width:' + Math.max(2, Math.round(v / mx * 100)) + '%"></i></span><span class="lk-val">' + t + '</span></div>';
+    return '<div class="lk-card ' + x.j + '"><div class="lk-h"><span>' + title[x.kind] + '</span><em>' + JL[x.j] + '</em></div>' +
+      bar('a', '原本', va, ta) + bar('b', '改選', vb, tb) + '</div>';
+  }).join('');
+  const changed = r.rows.filter(x => x.j === 'chg').map(x => title[x.kind].replace(/（.*）/, ''));
+  const verdict = changed.length ? '這個選擇改變的是：' + changed.join('、') : '看不出這個選擇改變了什麼';
+  const rng = x => esc(money(L0, x.q(x.a, 0.1))) + '～' + esc(money(L0, x.q(x.a, 0.9))) + '（原本）、' + esc(money(L0, x.q(x.b, 0.1))) + '～' + esc(money(L0, x.q(x.b, 0.9))) + '（改選）';
+  const inc = r.rows.find(x => x.kind === 'money');
+  $('br-luck').innerHTML = '<h3>運氣重抽 ' + n + ' 次，兩條路各走一遍</h3>' +
+    '<p class="lk-legend"><span class="a">原本「' + esc(pk.label) + '」</span><span class="b">改選「' + esc(alt.label) + '」</span></p>' +
+    '<p class="luck-main">' + esc(verdict) + '</p>' +
+    '<div class="lk-grid">' + cards + '</div>' +
+    '<p class="luck-cta"><a class="link" href="' + beginLink() + '">現實裡卡住的事也一樣：先分清楚哪些靠選擇、哪些看運氣。寫下來，免費幫你整理</a></p>' +
+    '<details class="lk-more"><summary>怎麼算的</summary>' +
+    '<p class="luck-note">每一次，兩條路從同一組運氣出發；你選的那一刻之後，抉擇都交給系統。改選之後，某一項差得多而且一面倒地偏高或偏低，才標「選擇改變的」；差得多但這次高、下次低，標「時高時低」，多半是運氣；本來就沒差多少標「差不多」；50 次完全一樣標「兩邊一樣」。這裡只看這個選擇改變了什麼，不判斷哪個比較好：那要看你最在乎的是什麼。這是示意，不是預測。壽命只校準過平均：60 歲前走的比生命表少一些，老年的餘命比生命表短，大約兩年。</p>' +
+    '<p class="luck-note">收入是中位數（折台幣）；十次裡有八次落在 ' + rng(inc) + '。工作是最後一份工作的職業大類。晚年存款用完只算活到退休的人。</p></details>';
+  // 下面兩欄不標哪邊比較好（2026-11-15 複審：跟「不判斷哪個比較好」矛盾）
   // 選擇帶出來的差異放上面；壽命和怎麼走的含運氣，分開放下面並標出來
   const col = (s, other, cls, head) => '<div class="' + cls + '"><h4>' + head + '</h4><dl>' +
-    '<dt>學歷・工作</dt><dd>' + esc(s.edu + '・' + s.job) + '</dd>' +
+    '<dt>學歷・工作</dt><dd>' + esc(s.age < 18 ? '還沒成年' : s.edu + '・' + s.job) + '</dd>' +
     '<dt>家庭</dt><dd>' + esc(s.fam) + '</dd>' +
-    '<dt>存款最多（折台幣）</dt><dd' + better(s.peakN, other.peakN, true) + '>' + esc(s.peak) + '</dd>' +
-    '<dt>留下的錢（折台幣）</dt><dd' + better(s.leftN, other.leftN, true) + '>' + esc(s.left) + '</dd>' +
-    '</dl><dl class="luck"><dt>活到（含運氣）</dt><dd>' + s.age + ' 歲</dd>' +
-    '<dt>怎麼走的（含運氣）</dt><dd>' + esc(s.end) + '</dd></dl></div>';
-  $('br-cmp').innerHTML = col(a, b, 'me', '你走過的<b>「' + esc(pk.label) + '」</b>') + col(b, a, 'alt', '另一條<b>「' + esc(alt.label) + '」</b>');
+    '<dt>存款最多（折台幣）</dt><dd>' + esc(s.peak) + '</dd>' +
+    '<dt>留下的錢（折台幣）</dt><dd>' + esc(s.left) + '</dd>' +
+    '</dl><dl class="luck"><dt>活到（這一次）</dt><dd>' + s.age + ' 歲</dd>' +
+    '<dt>怎麼走的（這一次）</dt><dd>' + esc(s.end) + '</dd></dl></div>';
+  $('br-cmp').innerHTML = col(a, b, 'me', '原本的選擇<b>「' + esc(pk.label) + '」</b><small>之後的抉擇系統代選</small>') + col(b, a, 'alt', '改選<b>「' + esc(alt.label) + '」</b><small>之後的抉擇系統代選</small>');
   const evs = (LL, from) => LL.p.log.filter(e => e.age >= from && e.kind !== 'news' && e.kind !== 'note' && e.kind !== 'pick');
   const key = e => e.age + '|' + e.text;
-  const ma = evs(S.L, pk.age), mb = evs(L, pk.age), sa = new Set(ma.map(key)), sb = new Set(mb.map(key));
+  const ma = evs(LA, pk.age), mb = evs(L, pk.age), sa = new Set(ma.map(key)), sb = new Set(mb.map(key));
   const list = arr => '<ul>' + (arr.length ? arr.slice(0, 10).map(e => '<li><b>' + e.age + ' 歲</b>' + esc(e.text) + '</li>').join('') : '<li>沒有不一樣的事</li>') + '</ul>';
-  $('br-diff').innerHTML = '<div><h4>只在你走過的這條發生</h4>' + list(ma.filter(e => !sb.has(key(e)))) + '</div><div class="alt"><h4>只在另一條發生</h4>' + list(mb.filter(e => !sa.has(key(e)))) + '</div>';
+  $('br-diff').innerHTML = '<div><h4>只在原本的選擇發生</h4>' + list(ma.filter(e => !sb.has(key(e)))) + '</div><div class="alt"><h4>只在另一條發生</h4>' + list(mb.filter(e => !sa.has(key(e)))) + '</div>';
+  announce('另一條路：如果當初選了「' + alt.label + '」。' + verdict);
 }
 
 function fail(e) { console.error(e); $('err').hidden = false; }
@@ -234,10 +361,31 @@ $('b-speed').onclick = () => { S.speed = (S.speed + 1) % SPEEDS.length; $('b-spe
 $('b-skip').onclick = skip;
 $('b-again').onclick = $('b-again2').onclick = () => start(S.age);
 $('b-back').onclick = () => show('s-end');
+$('b-skiproll').onclick = () => { S.skipRoll = true; };
+// 分享：連結帶年紀、種子和資料版本，朋友點開會生成同一個人；手機叫系統分享選單，電腦複製連結
+$('b-share').onclick = () => {
+  const u = new URL(location.pathname, location.origin);
+  u.searchParams.set('age', S.age); u.searchParams.set('seed', S.seed); u.searchParams.set('dv', SHARE_V()); u.searchParams.set('from', 'share');
+  const url = u.href, born = (E.NOW - S.age) + ' 年，我出生在' + S.C.name;
+  // 5 歲前走的局：不寫年齡和死因，也不接「你會生在哪裡？」
+  const text = shortLife(S.L.p) ? born + '，這一生很短。' : born + '，' + S.L.p.log[S.L.p.log.length - 1].text + ' 你會生在哪裡？';
+  const btn = $('b-share'), box = $('share-url');
+  const ok = () => { btn.textContent = '已複製'; announce('連結已經複製，貼給朋友就好。'); $('share-msg').textContent = '連結已經複製，貼給朋友就好。'; box.hidden = true; setTimeout(() => { btn.textContent = '分享這一生'; }, 2500); };
+  const manual = () => { box.hidden = false; box.value = url; box.focus(); box.select(); $('share-msg').textContent = '沒辦法自動複製，網址在下面，長按或 Ctrl+C 複製。'; announce('沒辦法自動複製，網址在下面。'); };
+  // 系統分享選單只在觸控裝置用；電腦一律複製。分享失敗（不是使用者自己取消）就退到手動網址框
+  if (navigator.share && matchMedia('(pointer: coarse)').matches) navigator.share({ title: '再活一次', text, url }).catch(e => { if (!e || e.name !== 'AbortError') manual(); });
+  else if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text + ' ' + url).then(ok, manual);
+  else manual();
+};
+
+document.querySelectorAll('a[data-begin]').forEach(a => { a.href = beginLink(); });
 
 boot().then(() => {
   // ?age= 從首頁帶過來；?seed= 指定同一個人生。不合格的值一律不理，留在開始的表單
   const q = E.parseQuery(location.search);
-  if (q) { $('age').value = q.age; start(q.age, q.seed); }
+  const dv = new URLSearchParams(location.search).get('dv');
+  // 從分享連結打開：出生卡上方說這是朋友的一生；網站更新過要提示
+  const shared = !!(q && q.seed != null && (dv || FROM === 'share'));
+  if (q) { $('age').value = q.age; start(q.age, q.seed, shared); S.dvOld = !!(shared && dv && dv !== SHARE_V()); }
 }).catch(fail);
 })();

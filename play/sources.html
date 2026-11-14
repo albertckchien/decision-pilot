@@ -36,6 +36,8 @@
     <li><b>聯合國人口司</b><span>女性平均初婚年齡、家戶人數。授權 CC BY 3.0 IGO。<a class="link" href="https://www.un.org/development/desa/pd/">un.org/development/desa/pd</a></span></li>
     <li><b>世界銀行 世界發展指標（WDI）</b><span>人均所得、通膨、失業率、吉尼係數、物價水準、童婚等。授權 CC BY 4.0。遊戲裡的逐年人均所得只取 2 位有效數字，通膨只分 6 級。<a class="link" href="https://databank.worldbank.org/source/world-development-indicators">databank.worldbank.org</a></span></li>
     <li><b>國際勞工組織 ILOSTAT</b><span>教育程度、非正式就業、女性勞動參與。授權 CC BY 4.0。<a class="link" href="https://ilostat.ilo.org/">ilostat.ilo.org</a></span></li>
+    <li><b>國際勞工組織 ILOSTAT：受僱者按職業別的平均月薪</b><span>各國九大類職業（主管、專業、技術員、事務、服務銷售、農林漁、技藝、機械操作、基層）的收入比。授權 CC BY 4.0。沒有資料的國家（例如日本、中國）用同區域、同所得級距國家的中位數估算。<a class="link" href="https://ilostat.ilo.org/">ilostat.ilo.org</a></span></li>
+    <li><b>勞動部 職類別薪資調查</b><span>台灣各職類的經常性薪資（民營的工業和服務業；公務員、公立學校老師、警察、軍人不在調查裡，用大類比例）。政府資料開放授權條款第 1 版。<a class="link" href="https://data.gov.tw/dataset/41685">data.gov.tw</a></span></li>
     <li><b>聯合國糧農組織 FAOSTAT</b><span>營養不足比例。授權 CC BY 4.0。<a class="link" href="https://www.fao.org/faostat/">fao.org/faostat</a></span></li>
     <li><b>烏普薩拉衝突資料計畫 UCDP 26.1</b><span>武裝衝突、組織性暴力、大規模攻擊，以及衝突波及多少地區。授權 CC BY 4.0。<a class="link" href="https://ucdp.uu.se/">ucdp.uu.se</a></span></li>
     <li><b>V-Dem（Varieties of Democracy，Coppedge et al., V-Dem Institute）</b><span>政體和政變。遊戲用的是由它算出的機率表（<code>data/vdem.json</code>），國家年表裡的政變標籤也由它推算，這兩部分依 CC BY-SA 4.0 釋出，改作請用同樣授權。畫面上不顯示 V-Dem 的數值。<a class="link" href="https://www.v-dem.net/">v-dem.net</a></span></li>
@@ -48,6 +50,8 @@
   <h2>遊戲自己設定的（不是資料算的）</h2>
   <ul class="plain">
     <li>每年的收入、花費、存款怎麼算；「折台幣」是照當地物價換成在台灣大約等於多少，不是匯率。</li>
+    <li>收入看做的是哪種工作：照這個國家這類職業的收入比（上面的 ILOSTAT、勞動部），同一份工作也有人賺得多、有人賺得少。學歷決定能應徵哪些工作；技職和大學出來的收入重疊很多，中學畢業就工作的人平均比較低，也有人比大學畢業的人高。</li>
+    <li>退休後的花費是最後收入的 45%。做公職或公司滿 10 年有退休金（最後薪水的四成）；自己做、打零工、務農的人沒有公司退休金，照這個國家領到老年年金的比例（ILOSTAT），有機會領基本年金。晚年存款用完的多半是因為沒有退休金，跟學歷沒有直接關係。存款用完就跟家人一起過，不會一直借錢。養小孩的花費照家裡收入算。</li>
     <li>考不考得上大學：用「25 歲以上有大學以上學歷的比例」乘上 1.4，再照成績和家境調整。</li>
     <li>健康、快樂、知識、人際四個數值，和它們對壽命、收入的影響。</li>
     <li>每個抉擇的選項和結果機率（例如重病治療成功率，用該國「現代避孕方法需求滿足率」代替醫療覆蓋程度粗估）。</li>

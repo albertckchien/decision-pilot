@@ -4,6 +4,15 @@
   var view = document.getElementById('view'), statusEl = document.getElementById('status');
   var who = document.getElementById('who'), bar = document.getElementById('progress');
   var S = { session: (window.safeStore.get('pw_session') || null), email: '', points: 0, card: null, story: '' };
+  // 漏斗：從哪裡來（例如遊戲的 ?from=play），只收小寫英文 1～12 字，記在這台瀏覽器，註冊時一起送出
+  // 規則：存的時候記日期，超過 30 天當作沒有；註冊成功後清掉（2026-11-15 嚴審第 4 條）
+  var FROM = (function () {
+    var f = new URLSearchParams(location.search).get('from');
+    if (f && /^[a-z]{1,12}$/.test(f)) { window.safeStore.set('pw_from', { v: f, t: Date.now() }); return f; }
+    var o = window.safeStore.get('pw_from');
+    if (o && typeof o.v === 'string' && /^[a-z]{1,12}$/.test(o.v) && Date.now() - (+o.t || 0) < 30 * 864e5) return o.v;
+    window.safeStore.del('pw_from'); return '';
+  })();
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function md(s) {  // 只處理初階報告會出現的格式
@@ -69,7 +78,7 @@
         sent = true; document.getElementById('code-box').hidden = false; document.getElementById('pw-box').hidden = false;
         go.textContent = go.dataset.t = '開帳號'; say('驗證碼寄出了，10 分鐘內有效。');
       });
-      call(go, 'signupFinish', { email: email, code: document.getElementById('code').value, password: document.getElementById('pw').value }).then(loggedIn(email));
+      call(go, 'signupFinish', { email: email, code: document.getElementById('code').value, password: document.getElementById('pw').value, from: FROM }).then(function (r) { window.safeStore.del('pw_from'); return loggedIn(email)(r); });
     };
   }
   function loggedIn(email) {

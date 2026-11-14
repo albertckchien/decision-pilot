@@ -4,7 +4,8 @@
 // 結束代碼 0＝全過。
 const fs = require('fs'), path = require('path');
 const E = require('./engine.js'), T = require('./text.js');
-const N = +(process.argv[2] || 1000);
+const MODE = process.argv[2];   // calibrate＝重校 MORT_K；snapshot＝更新結局快照；數字＝局數
+const N = /^\d+$/.test(MODE || '') ? +MODE : 1000;
 const dir = path.join(__dirname, 'data');
 const rd = f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
 const D0 = { rules: rd('rules.json'), vdem: rd('vdem.json') };
@@ -30,9 +31,11 @@ function play(seed, age, chooser, extra) {
   return { L, iso, asked };
 }
 // 照引擎同一張生命表、同樣的年份算「這個人照生命表平均活幾歲」（不含健康係數和抉擇），用來校壽命
-function cohortE0(C, birthYear, sex) {
-  let l = 1, e = 0;
-  for (let a = 0; a <= 110 && l > 1e-6; a++) { const q = Math.min(1, E.qx(C, birthYear + a, a, sex)); e += l * (1 - q / 2); l *= 1 - q; }
+// out 另外帶回：5 歲前、60 歲前走的機率，和 15／40／65 歲還活著時的平均餘命（照同一張表）
+function cohortE0(C, birthYear, sex, out) {
+  let l = 1, e = 0; const L = [1];
+  for (let a = 0; a <= 110 && l > 1e-6; a++) { const q = Math.min(1, E.qx(C, birthYear + a, a, sex)); e += l * (1 - q / 2); l *= 1 - q; L[a + 1] = l; if (a === 4 && out) out.u5 = 1 - l; if (a === 59 && out) out.u60 = 1 - l; }
+  if (out) for (const x of [15, 40, 65]) { let s = 0; for (let a = x; a < L.length - 1; a++) s += (L[a] + L[a + 1]) / 2; out['e' + x] = L[x] ? s / L[x] : 0; out['l' + x] = L[x] || 0; }
   return e;
 }
 const yIdx = by => Math.max(0, Math.min(index.countries[0].b.length - 1, by - index.birthYears[0]));
@@ -40,16 +43,69 @@ const totW = by => index.countries.reduce((s, c) => s + (c.b[yIdx(by)] || 0), 0)
 const otherNames = iso => index.countries.filter(c => c.iso !== iso).map(c => c.name);
 const ALL_NAMES = index.countries.map(c => ({ iso: c.iso, name: c.name }));
 
+// ---------- 重校死亡率：node check.js calibrate ----------
+if (MODE === 'calibrate') {
+  const cur = E.MORT_K;
+  for (const k of [0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 1]) {
+    E.setMortK(k); let a = 0, e = 0;
+    for (let i = 0; i < 3000; i++) {
+      const seed = 1000 + i * 7919, age = [10, 20, 25, 30, 35, 40][i % 6], r = E.rng(seed ^ 0xC0FFEE), iso = E.pickCountry(index, E.NOW - age, r), C = load(iso);
+      const L = E.Life(Object.assign({}, D0), C, { age, seed, auto: true }); while (L.p.alive) L.step();
+      a += L.p.age; e += cohortE0(C, E.NOW - age, L.p.sex);
+    }
+    console.log(`MORT_K ${k}：遊戲平均 ${(a / 3000).toFixed(2)} 歲，生命表 ${(e / 3000).toFixed(2)} 歲，差 ${((a - e) / 3000).toFixed(2)}`);
+  }
+  console.log(`現在用的是 ${cur}。挑差最接近 0 的填回 engine.js 的 MORT_K，升 ENGINE_V，再跑 node check.js snapshot 和 node check.js 1000。`);
+  process.exit(0);
+}
+
+// ---------- 結局快照：同一個年紀＋種子的結局變了，ENGINE_V 一定要升（分享連結靠它） ----------
+const SNAP = path.join(__dirname, 'snapshots.json');
+// 資料版本：ui.js 的 DATA_V；資料雜湊：data/ 所有 json 的內容（資料變了但 DATA_V 沒升，靠它抓）
+const DATA_V = (fs.readFileSync(path.join(__dirname, 'ui.js'), 'utf8').match(/const DATA_V = '([^']+)'/) || [])[1];
+const dataHash = (() => { const h = require('crypto').createHash('sha1'); const walk = d => fs.readdirSync(d).sort().forEach(f => { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) walk(p); else if (f.endsWith('.json')) h.update(f).update(fs.readFileSync(p)); }); walk(dir); return h.digest('hex').slice(0, 12); })();
+const snapNow = () => [[30, 15], [30, 1], [30, 3], [0, 42], [25, 7], [40, 99], [10, 2024], [90, 5]].map(([age, seed]) => {
+  const L = E.Life(Object.assign({}, D0), load(E.pickCountry(index, E.NOW - age, E.rng(seed ^ 0xC0FFEE))), { age, seed, auto: true });
+  while (L.p.alive) L.step();
+  return { age, seed, iso: L.C.iso, end: L.p.age, last: L.p.log[L.p.log.length - 1].text, saved: Math.round(L.p.savings) };
+});
+if (MODE === 'snapshot') { fs.writeFileSync(SNAP, JSON.stringify({ engine: E.ENGINE_V, dataV: DATA_V, dataHash, lives: snapNow() }, null, 1)); console.log('快照已更新（' + E.ENGINE_V + '、' + DATA_V + '、' + dataHash + '）'); process.exit(0); }
+{
+  let old = null; try { old = JSON.parse(fs.readFileSync(SNAP, 'utf8')); } catch (e) { fail('沒有 snapshots.json，先跑 node check.js snapshot'); }
+  if (old) {
+    const now = JSON.stringify(snapNow()), was = JSON.stringify(old.lives);
+    // 資料變了但 DATA_V 沒升 → 升 DATA_V；資料和 DATA_V 都沒變、結局卻變了 → 是引擎改了，升 ENGINE_V
+    if (old.dataHash !== dataHash && old.dataV === DATA_V) fail(`data/ 的內容變了，但 ui.js 的 DATA_V 還是 ${DATA_V}：升 DATA_V，再跑 node check.js snapshot`);
+    else if (old.dataHash === dataHash && old.engine === E.ENGINE_V && now !== was) fail(`資料沒變、同一個年紀＋種子的結局卻變了，ENGINE_V 還是 ${E.ENGINE_V}：升 engine.js 的 ENGINE_V，再跑 node check.js snapshot`);
+    else if (old.engine !== E.ENGINE_V || old.dataV !== DATA_V) fail(`版本換了（${E.ENGINE_V}、${DATA_V}），快照還是舊的（${old.engine}、${old.dataV}）：跑 node check.js snapshot 更新`);
+  }
+}
+
+// ---------- 可重現：同一個選項、同一個 salt 跑兩次要一模一樣（只檢查可重現，不代表兩條路的骰子對齊；選不同選項後各自擲骰） ----------
+{
+  let bad = 0;
+  for (let s = 0; s < 20; s++) {
+    const run = () => { const L = E.Life(Object.assign({}, D0), load('CHN'), { age: 30, seed: 15 }); let o = L.step(); while (L.p.alive) { if (o && o.choice) { L.reseed(s); L.setAuto(true); o = L.choose(o.choice.opts[0].k); continue; } o = L.step(); } return JSON.stringify(L.p.log); };
+    if (run() !== run()) bad++;
+  }
+  if (bad) fail(`同一個選項、同一個 salt 重跑不一樣 ${bad}／20`);
+}
+
 // ---------- 1000 局 ----------
 const errs = [], picks = {}, askedHist = {}, byIso = {}, uni = {};
-let sumAsked = 0, under5 = 0, hmS = 0, hmN = 0, foreignName = [];
+const lifeDiffs = [];
+const dist = { u60: 0, u60e: 0, t15: 0, t40: 0, t65: 0, w15: 0, w40: 0, w65: 0, s15: 0, s40: 0, s65: 0, n15: 0, n40: 0, n65: 0 };
+let u5exp = 0, sumAsked = 0, under5 = 0, hmS = 0, hmN = 0, foreignName = [];
 for (let i = 0; i < N; i++) {
   const seed = 1000 + i * 7919, age = [10, 20, 25, 30, 35, 40][i % 6];
   try {
     const { L, iso, asked } = play(seed, age, c => { const k = c.opts[(seed >> 3) % c.opts.length].k; (picks[c.id] = picks[c.id] || {})[k] = (picks[c.id][k] || 0) + 1; return k; });
     const p = L.p, C = load(iso), by = E.NOW - age;
     const b = byIso[iso] = byIso[iso] || { n: 0, age: 0, exp: 0, w: 0, name: C.name };
-    b.n++; b.age += p.age; b.exp += cohortE0(C, by, p.sex);
+    const o5 = {}, ex = cohortE0(C, by, p.sex, o5); b.n++; b.age += p.age; b.exp += ex; u5exp += o5.u5; lifeDiffs.push(p.age - ex);
+    dist.u60 += p.age < 60 ? 1 : 0; dist.u60e += o5.u60;
+    // 表那邊照活到 x 歲的機率 l(x) 加權（高死亡率國家活到 65 歲的人少，不能跟其他國家等權平均）
+    for (const x of [15, 40, 65]) { dist['t' + x] += o5['e' + x] * o5['l' + x]; dist['w' + x] += o5['l' + x]; if (p.age >= x) { dist['s' + x] += p.age - x; dist['n' + x]++; } }
     sumAsked += asked; askedHist[asked] = (askedHist[asked] || 0) + 1;
     if (p.age < 5) under5++;
     hmS += p.hmSum || 0; hmN += p.hmN || 0;
@@ -112,6 +168,7 @@ for (const f of fs.readdirSync(path.join(dir, 'c'))) {
   keysOk(c.start, W, 'start.', 'c/' + f);
   keysOk(c.haz, W, 'haz.', 'c/' + f);
   keysOk(c.p, W, 'p.', 'c/' + f);
+  if (!Array.isArray(c.occ) || c.occ.length !== 9 || c.occ.some(v => !(v > 0))) fail(`c/${f} 的 occ 不是 9 個正數（沒有的話所有工作收入一樣）`);
   if (c.start.lvl != null && String(Math.round(c.start.lvl)).replace(/0+$/, '').length > 2) fail(`c/${f} start.lvl 不是 2 位有效數字：${c.start.lvl}`);
   for (const [y, h] of Object.entries(c.hist)) {
     keysOk(h, W, 'hist.', 'c/' + f + ' ' + y);
@@ -142,8 +199,20 @@ if (branchWorldBad) fail(`分岔後國家大事不一樣 ${branchWorldBad}／30`
 // ---------- 報表 ----------
 const rows = Object.entries(byIso);
 const totN = rows.reduce((s, [, b]) => s + b.n, 0), totAge = rows.reduce((s, [, b]) => s + b.age, 0), totExp = rows.reduce((s, [, b]) => s + b.exp, 0);
-console.log(`跑了 ${N} 局；5 歲前走的 ${(under5 / N * 100).toFixed(1)}%；健康係數平均 ${(hmS / hmN).toFixed(3)}（1 表示跟生命表一樣）`);
+console.log(`跑了 ${N} 局；5 歲前走的 ${(under5 / N * 100).toFixed(1)}%（生命表 ${(u5exp / N * 100).toFixed(1)}%）；15 歲以上的健康係數平均 ${(hmS / hmN).toFixed(3)}（再乘 MORT_K ${E.MORT_K}）`);
 console.log(`壽命：平均活到 ${(totAge / totN).toFixed(1)} 歲；照同國、同出生年、同性別的生命表應該是 ${(totExp / totN).toFixed(1)} 歲`);
+// 分布：只校準平均還不夠，60 歲前走的比例、15／40／65 歲時的平均餘命也要對得上（2026-11-15 嚴審第 5 條）
+// 平均餘命那幾條：遊戲裡的每局都從自己的出生年起算，餘命只看活過那個年紀的人，表的那一邊是每局自己那張表的平均
+const distRows = [['60 歲前走的比例', dist.u60 / N * 100, dist.u60e / N * 100, 3, '%'], ...[15, 40, 65].map(x => [x + ' 歲時的平均餘命', dist['s' + x] / dist['n' + x], dist['t' + x] / dist['w' + x], x === 65 ? 1.5 : 2.5, ' 年'])];
+console.log('壽命分布（遊戲／生命表）：' + distRows.map(([k, a, b, tol, u]) => `${k} ${a.toFixed(1)}${u}／${b.toFixed(1)}${u}`).join('、'));
+// 分布沒過時，畫面要有「壽命只校準過平均」的註記才放行（法官 2026-11-15 第 5 條）；註記拿掉、分布又沒過就擋
+const noted = fs.readFileSync(path.join(__dirname, 'ui.js'), 'utf8').split(/\r?\n/).some(l => l.includes("'<p class=\"luck-note\">") && l.includes('壽命只校準過平均'));
+distRows.forEach(([k, a, b, tol]) => { if (Math.abs(a - b) > tol) { if (noted) console.log(`  ${k} 差 ${(a - b).toFixed(1)}，超過 ${tol}；畫面已註明「壽命只校準過平均」`); else fail(`${k} 遊戲 ${a.toFixed(1)}、生命表 ${b.toFixed(1)}，差超過 ${tol}，畫面也沒註明「壽命只校準過平均」`); } });
+if (Math.abs(under5 - u5exp) / N > 0.015) fail(`5 歲前走的比例跟生命表差超過 1.5 個百分點`);
+// 容許範圍照樣本誤差：一個人的壽命差可以到幾十歲，1000 局的平均本身就會晃 0.6 歲上下，所以取 1.2 歲和 2.5 倍標準誤的大者
+const dMean = lifeDiffs.reduce((a, b) => a + b, 0) / lifeDiffs.length, dSe = Math.sqrt(lifeDiffs.reduce((a, b) => a + (b - dMean) ** 2, 0) / (lifeDiffs.length - 1) / lifeDiffs.length), lifeTol = Math.max(1.2, 2.5 * dSe);
+console.log(`  差 ${dMean.toFixed(2)} 歲，標準誤 ${dSe.toFixed(2)}，容許 ±${lifeTol.toFixed(2)}（要更準用 node check.js calibrate，3000 局）`);
+if (N >= 1000 && Math.abs(dMean) > lifeTol) fail(`壽命跟生命表差 ${dMean.toFixed(1)} 歲，超過 ±${lifeTol.toFixed(1)}（跑 node check.js calibrate 重校 MORT_K）`);
 console.log('  差最多的 10 國（至少 8 局）：' + rows.filter(([, b]) => b.n >= 8).map(([, b]) => [b.name, b.age / b.n - b.exp / b.n, b.n]).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1])).slice(0, 10).map(([nm, d, n]) => `${nm} ${d > 0 ? '+' : ''}${d.toFixed(1)}（${n} 局）`).join('、'));
 console.log('抽樣：差最多的 10 國（實際局數／每局用自己出生年權重的期望）：' + rows.map(([, b]) => [b.name, b.n, b.w]).sort((x, y) => Math.abs(y[1] - y[2]) - Math.abs(x[1] - x[2])).slice(0, 10).map(([nm, a, w]) => `${nm} ${a}/${w.toFixed(1)}`).join('、'));
 console.log(`每局停下來問 ${(sumAsked / N).toFixed(1)} 次；分布 ${Object.entries(askedHist).sort((a, b) => a[0] - b[0]).map(([k, v]) => k + ':' + v).join(' ')}`);
