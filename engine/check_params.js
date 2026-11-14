@@ -2,7 +2,9 @@
 // 用法：node check_params.js <人生模擬參數.json> [對照用的檔 ...]
 // 對照用的檔（問題卡、個人檔案、工作區、報告）：參數裡的錢，要在這些檔或 assumptions 裡找得到。
 const fs = require('fs'), path = require('path');
-const [pf, ...refs] = process.argv.slice(2);
+// 對照用的檔：--data 和它後面的版本號不算
+const argv = process.argv.slice(2), di0 = argv.indexOf('--data');
+const [pf, ...refs] = di0 >= 0 ? argv.filter((x, i) => i !== di0 && i !== di0 + 1) : argv;
 if (!pf) { console.log('用法：node check_params.js <人生模擬參數.json> [對照用的檔 ...]'); process.exit(1); }
 const err = [], warn = [];
 let P;
@@ -24,7 +26,10 @@ need('assumptions', v => Array.isArray(v), '要是文字陣列');
 need('options', v => Array.isArray(v) && v.length >= 2 && v.length <= 4, '要 2～4 個選項');
 
 // 國家要在 200 國資料裡
-const DATA = path.resolve(__dirname, '..', '..', '1in8b-research', 'country-data', 'estimated', 'trends', 'start_state.csv');
+// --data <版本號>：用存起來那一版的國家清單檢查（重跑舊報告前）
+const dI = process.argv.indexOf('--data');
+const DATA = dI > 0 ? path.resolve(__dirname, '..', '..', '1in8b-research', 'country-data', 'report_versions', String(process.argv[dI + 1]).replace(/[^0-9a-f]/g, ''), 'start_state.csv')
+  : path.resolve(__dirname, '..', '..', '1in8b-research', 'country-data', 'estimated', 'trends', 'start_state.csv');
 const isos = new Set(fs.existsSync(DATA) ? fs.readFileSync(DATA, 'utf8').split('\n').slice(1).map(l => l.split(',')[0]) : []);
 const okIso = c => isos.size === 0 || isos.has(c);
 if (P.home && !okIso(P.home)) err.push(`home 的國家代碼 ${P.home} 不在 200 國資料裡`);

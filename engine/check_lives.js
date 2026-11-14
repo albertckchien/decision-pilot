@@ -22,7 +22,8 @@ fs.writeFileSync(femaleP, JSON.stringify(Object.assign({}, PAR, { gender: PAR.ge
 // 原本的參數跑一次，再把主角換成另一個性別跑一次
 for (const [variant, pf] of [[PAR.gender === 'F' ? '女' : '男', PARF], [PAR.gender === 'F' ? '男' : '女', femaleP]])
 for (let seed = 1; seed <= N; seed++) {
-  execFileSync('node', [path.join(__dirname, 'simulate.js'), pf, tmp, '--seed', String(seed), '--runs', '200']);
+  const di = process.argv.indexOf('--data'), dv = di > 0 ? ['--data', process.argv[di + 1]] : [];   // 對指定的舊版本做檢查
+  execFileSync('node', [path.join(__dirname, 'simulate.js'), pf, tmp, '--seed', String(seed), '--runs', '200', ...dv]);
   const d = JSON.parse(fs.readFileSync(tmp, 'utf8'));
   const fam = Object.fromEntries(d.family);
   const seenNames = new Map();

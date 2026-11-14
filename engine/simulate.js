@@ -1,6 +1,7 @@
 // 人生模擬引擎（v1.1）：每個選項跑 N 次，照用戶排的三個目標打分，挑第 80、20 百分位附近當運氣好、運氣差。
 // 每年 5～15 件事，一路到過世；事件裡的人都有名字（names.js）。人生選擇一律保守，好壞只來自外在的運氣。
-// 用法：node simulate.js <人生模擬參數.json> <人生模擬.json> [--runs 500] [--seed 1]
+// 用法：node simulate.js <人生模擬參數.json> <人生模擬.json> [--runs 500] [--seed 1] [--data 資料版本號]
+// --data：同一個客人改條件重跑時，填上一份報告輸出的 data_id，國家資料就用當時那一版（不給就用最新資料）
 const fs = require('fs');
 const W = require('./world.js');
 const T = require('./texts.js');
@@ -19,8 +20,9 @@ function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 
 const clamp = (v, lo = 3, hi = 100) => Math.max(lo, Math.min(hi, v));
 const pick = (arr, rnd) => arr[Math.floor(rnd() * arr.length)];
 // 地名：200 國資料的中文名（countries.csv 的 name_zh），找不到才用代碼
-const CITY = (() => {
-  const p = require('path').resolve(__dirname, '..', '..', '1in8b-research', 'country-data', 'data', 'countries.csv');
+// 讀的是這份報告鎖住的那一版 countries.csv（W.load 給路徑），每週更新不會改到舊報告的地名
+let CITY = {};
+const readCity = p => {
   const out = { TWN: '台灣', SGP: '新加坡' };
   try {
     const lines = fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '').split('\n');
@@ -28,7 +30,7 @@ const CITY = (() => {
     lines.slice(1).forEach(l => { const c = l.split(','); if (c[iI] && c[iZ] && !out[c[iI]]) out[c[iI]] = c[iZ]; });
   } catch (e) { /* 沒有資料檔就只有台灣、新加坡 */ }
   return out;
-})();
+};
 function phaseAt(opt, t) { return opt.phases.find(p => t >= p.from && t < p.to) || opt.phases[opt.phases.length - 1]; }
 
 // 一段人生：角色用代號記（cw3、boss2、fr1…），挑出要給人看的那幾段才換成名字
@@ -234,7 +236,12 @@ function main() {
   const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? +process.argv[i + 1] : d; };
   const N = arg('--runs', 500), seed0 = arg('--seed', 1);
   const P = JSON.parse(fs.readFileSync(pf, 'utf8'));
-  const D = W.load([...new Set([P.home, ...P.options.flatMap(o => o.phases.map(p => p.country))])]);
+  // --data 一出現就一定要接版本號；沒接或寫成 --data=xxx 直接停，不默默改用最新資料
+  if (process.argv.some(a => a.startsWith('--data='))) throw new Error('請寫成 --data <版本號>（中間空一格）');
+  const di = process.argv.indexOf('--data'), dataId = di > 0 ? process.argv[di + 1] : null;
+  if (di > 0 && (!dataId || dataId.startsWith('--'))) throw new Error('--data 後面要接資料版本號（上一份報告輸出的 data_id）');
+  const D = W.load([...new Set([P.home, ...P.options.flatMap(o => o.phases.map(p => p.country))])], dataId);
+  CITY = readCity(D.countriesFile);
   const nr = rng(seed0 * 7 + 3), used = new Set(), fam = P.family || {};
   const sur = NM.TW_SUR[Math.floor(nr() * NM.TW_SUR.length)];
   const sexMe = P.gender || 'M', sexSp = fam.spouse_gender || (sexMe === 'M' ? 'F' : 'M');
@@ -248,12 +255,11 @@ function main() {
   const order = (fam.kids || []).map((a, i) => i).sort((x, y) => fam.kids[y] - fam.kids[x]);
   const kidLabel = i => (fam.kids.length === 1 ? '小孩' : ['老大', '老二', '老三', '老四', '老五'][order.indexOf(i)] || '小孩');
   // 記下用的是哪一版國家資料（每週資料管線會換規則，例如 2026-11-14 地震改成只算淺層），客人問「怎麼跟上次不一樣」查得到
-  const EST = require('path').resolve(__dirname, '..', '..', '1in8b-research', 'country-data', 'estimated');
-  const readJ = f => { try { return JSON.parse(fs.readFileSync(require('path').join(EST, f), 'utf8')); } catch (e) { console.warn('讀不到 ' + f + '，報告的資料版本會記成 null'); return {}; } };
-  // rules_version 直接讀模擬實際用的 rules.json；version 讀 VERSION.json（整份資料的發布號）
-  const ver = { version: readJ('VERSION.json').version, rules_version: readJ('trends/rules.json').rules_version };
+  // data_id：這份報告用的國家資料版本（重跑時用 --data 指定）；rules_version 讀模擬實際用的 rules.json
+  const ver = { version: D.dataId, rules_version: D.rulesVersion };
   const out = { case: P.case, generated: new Date().toISOString().slice(0, 10), runs: N, start_age: P.age, kids: fam.kids || [], gender: sexMe,
-    data_version: ver.version || null, rules_version: ver.rules_version || null,
+    // 重跑要一樣：同一個 data_id、seed、runs；life_tables、engine 不一樣時 warnings 會寫
+    data_id: ver.version, rules_version: ver.rules_version, seed: seed0, life_tables: D.lifeTables, engine: D.engine, warnings: D.warnings,
     family: [['另一半', family.sp, sexSp], ...(fam.kids || []).map((a, i) => [kidLabel(i), family['kid' + i], kidSex[i]]), ['爸爸', family.father, 'M'], ['媽媽', family.mother, 'F']],
     options: [] };
   const all = [];

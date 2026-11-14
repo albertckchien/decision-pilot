@@ -3,7 +3,7 @@
 照 `../docs/人生模擬設計.md` 和示意頁 v2（用戶 2026-11-03 同意）。報告寫完後在我們這邊先跑，結果存成 `人生模擬.json` 放進同學的 Drive 資料夾，報告頁的 `assets/sim.js` 負責播放。
 
 ```
-node simulate.js <人生模擬參數.json> <人生模擬.json> [--runs 500] [--seed 1]
+node simulate.js <人生模擬參數.json> <人生模擬.json> [--runs 500] [--seed 1] [--data 資料版本號]
 ```
 
 ## 每一年怎麼擲
@@ -22,3 +22,16 @@ node simulate.js <人生模擬參數.json> <人生模擬.json> [--runs 500] [--s
 - 戰爭、政變、組織性暴力、倒債的規則還沒接；通膨級距沒有逐年轉移，先照現在的級距（有貨幣危機升兩級）；貨幣危機的 infl_hi 先用「通膨 20% 以上」代替。
 - 個人的事（升遷、生病、裁員）的機率是粗估，不是統計資料。
 - 存款沒算房貸本金和保險，金額只看趨勢。
+
+
+## 資料版本（2026-11-14）
+
+國家資料每週日自動更新。每次產報告，引擎會把用到的四個檔（`rules.json`、`country_hazards.csv`、`start_state.csv`、地名用的 `countries.csv`）照內容算一個 12 碼版本號，第一次遇到就存到 `1in8b-research/country-data/report_versions/<版本號>/`（不公開的研究 repo），輸出的 json 記在 `data_id`。
+
+- **同一個客人改條件重跑**：加 `--data <上一份的 data_id>`，而且 `--seed`、`--runs` 要跟上一份一樣（輸出有記 `seed`、`runs`）。這樣兩份的差距只來自客人改的地方。
+- **新客人**：不加 `--data`，用最新資料。
+- `--data` 後面沒接版本號、或寫成 `--data=xxx`，程式直接停，不會默默改用最新資料。
+- 讀存起來的版本前會重算內容雜湊，對不上（檔案被改過、換行被轉）就停。
+- 生命表（23MB、一年才換一次）不另外存，輸出記 `life_tables` 雜湊；引擎程式和句庫記 `engine` 雜湊。重跑時這兩個跟當時不一樣，`warnings` 會寫出來，結果可能差一點。
+- 重跑舊版本前的檢查：`node check_params.js <參數檔> --data <版本號>`、`node check_lives.js 5 <參數檔> --data <版本號>`。
+- 存了新版本時會印「新存了資料版本…記得 commit 1in8b-research」。1in8b-research **目前沒有遠端**，commit 了也只在這台電腦；換電腦要連 `report_versions/` 一起搬，或之後開一個不公開的遠端。`.gitattributes` 已設 `report_versions/** -text`，換行不會被轉。
