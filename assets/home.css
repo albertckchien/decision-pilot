@@ -179,3 +179,12 @@
 .rp-intro { padding-bottom: 0; }
 .rp-intro .hero-h { font-size: clamp(2.2rem, 1rem + 4vw, 4.5rem); }
 .rp-intro + .how { padding-top: clamp(2rem, 5vh, 3.5rem); }
+
+/* 首頁開頭：出生（2026-11-14） */
+.play .hero-h { font-size: clamp(3.4rem, 1rem + 8vw, 8.4rem); line-height: 1.02; }
+.birth-go { display: grid; gap: 0.6rem; max-width: 26rem; }
+.birth-go label { font-weight: 500; display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
+.birth-go-row { display: flex; gap: 0.6rem; }
+.birth-go-row input { width: 7rem; min-height: 3.25rem; padding: 0 1rem; border: 1px solid var(--line); background: #fff; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.birth-go-row .btn { flex: 1; font-size: 1.125rem; }
+@media (max-width: 640px) { .birth-go-row input { width: 5.5rem; } }

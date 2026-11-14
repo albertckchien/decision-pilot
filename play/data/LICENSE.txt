@@ -1,0 +1,3 @@
+這個資料夾的檔案由公開資料推算，依各來源的授權釋出；欄位和來源見 FIELDS.json，給人看的版本見 ../sources.html。
+vdem.json 和國家年表裡的政變標籤由 V-Dem 推算，依 CC BY-SA 4.0 釋出。不含 Pew 資料。
+This folder contains data derived from public sources under their own licenses; see FIELDS.json. vdem.json is CC BY-SA 4.0 (derived from V-Dem).

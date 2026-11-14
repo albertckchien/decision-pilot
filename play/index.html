@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>再活一次｜擇路 Pathwise</title>
+<meta name="description" content="照真實的出生人數抽一個國家，從出生過到老。選完之後，還能回到某一年走另一條路。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css?v=20261114h">
+<link rel="stylesheet" href="play.css?v=20261114h">
+</head>
+<body class="play-page">
+<header class="bar">
+  <a class="wordmark" href="../">擇路 <span class="wm-en">Pathwise</span></a>
+  <a class="small bar-link" href="../begin.html">寫下卡住的事</a>
+</header>
+
+<main id="app" class="wrap">
+  <!-- 1. 開始 -->
+  <section id="s-start" class="scr">
+    <h1 class="display">你會生在<br>哪裡？</h1>
+    <p class="lead">今天世界上大約有 36 萬個嬰兒出生。照每個國家真實的出生人數抽一個，從出生過到老，大約 5 分鐘。</p>
+    <form id="f-start" class="start-form">
+      <label for="age">你今年幾歲？<span class="small muted">跟你同一年出生</span></label>
+      <div class="start-row">
+        <input id="age" name="age" type="number" inputmode="numeric" min="0" max="90" value="30" required>
+        <button class="btn" type="submit">出生</button>
+      </div>
+    </form>
+    <p class="small muted heavy">依真實統計，可能遇到死亡、戰爭、童婚等沉重情節，建議 15 歲以上。</p>
+    <p class="small muted note">家境、性別、城鄉都是隨機的。1996 到 2025 年的國家大事照真實歷史，之後照過去 30 年的規律推估。這是示意，不是預測。</p>
+  </section>
+
+  <!-- 2. 抽國家、出生登記 -->
+  <section id="s-born" class="scr" hidden>
+    <p class="roll-label small muted" id="roll-label">抽一個國家⋯</p>
+    <p class="roll" id="roll" aria-live="polite"></p>
+    <article class="birth" id="birth" hidden>
+      <h2 class="birth-h">出生登記</h2>
+      <dl class="birth-dl" id="birth-dl"></dl>
+      <p class="birth-odds" id="birth-odds"></p>
+      <p class="small muted" id="birth-money"></p>
+      <div class="btns"><button class="btn" id="b-live">開始這一生</button><button class="btn quiet" id="b-reborn">重新出生</button></div>
+      <p class="small"><a class="link" href="sources.html" target="_blank" rel="noopener">資料從哪裡來？</a></p>
+    </article>
+  </section>
+
+  <!-- 3. 過一生 -->
+  <section id="s-life" class="scr" hidden>
+    <div class="hud" id="hud">
+      <div class="hud-age"><b id="h-age">0</b><span id="h-year"></span></div>
+      <div class="hud-who" id="h-who"></div>
+      <dl class="hud-stats" id="h-stats"></dl>
+      <div class="hud-ctrl">
+        <button class="btn quiet" id="b-pause">暫停</button>
+        <button class="btn quiet" id="b-speed">速度 1×</button>
+        <button class="btn quiet" id="b-skip">跳到下個抉擇</button>
+      </div>
+    </div>
+    <ol class="feed" id="feed" aria-live="polite"></ol>
+    <div class="choice" id="choice" hidden></div>
+  </section>
+
+  <!-- 4. 結局 -->
+  <section id="s-end" class="scr" hidden>
+    <p class="small muted" id="e-where"></p>
+    <h2 class="head" id="e-h"></h2>
+    <p class="small muted disclaim">這是照統計擲骰子跑出的一種可能，不是預測。</p>
+    <p class="lead" id="e-none" hidden>這一生太短，沒來得及做選擇。</p>
+    <dl class="facts" id="e-facts"></dl>
+    <p class="world" id="e-world"></p>
+    <div id="e-picks-wrap">
+    <h3 class="sub">你做過的選擇</h3>
+    <p class="small muted">挑一個，回到那一年走另一條。世界照樣發生同樣的事，只有你的人生從那裡開始不一樣。</p>
+    <ol class="picks" id="e-picks"></ol>
+    <p class="small muted" id="e-auto"></p>
+    </div>
+    <div class="btns"><button class="btn quiet" id="b-again">再出生一次</button><a class="btn quiet" href="sources.html" target="_blank" rel="noopener">資料來源</a></div>
+    <aside class="bridge" id="e-bridge">
+      <h3>遊戲可以重跑，現實不行。</h3>
+      <p>現實裡卡住的事，先寫下來想清楚。免費幫你整理成一份初階報告，大約 15 分鐘。</p>
+      <a class="btn gold" href="../begin.html">寫下卡住的事</a>
+    </aside>
+  </section>
+
+  <!-- 5. 另一條路 -->
+  <section id="s-branch" class="scr" hidden>
+    <p class="small muted" id="br-where"></p>
+    <h2 class="head" id="br-h"></h2>
+    <p class="br-note">世界發生的事跟原本一樣；但你自己的運氣，像會不會生病、活到幾歲，從那一年起重新擲骰。下面標「含運氣」的兩列，差別多半是運氣，不是選擇造成的。這是照統計擲骰子跑出的一種可能，不是預測。</p>
+    <div class="cmp" id="br-cmp"></div>
+    <h3 class="sub">從那一年開始，不一樣的事</h3>
+    <div class="cmp diff" id="br-diff"></div>
+    <div class="btns"><button class="btn" id="b-back">回到結局，試別的選擇</button><button class="btn quiet" id="b-again2">再出生一次</button></div>
+    <aside class="bridge">
+      <h3>遊戲可以重跑，現實不行。</h3>
+      <p>現實裡卡住的事，先寫下來想清楚。免費幫你整理成一份初階報告，大約 15 分鐘。</p>
+      <a class="btn gold" href="../begin.html">寫下卡住的事</a>
+    </aside>
+  </section>
+
+  <p class="err" id="err" hidden>資料載入不了，重新整理一次試試。</p>
+</main>
+
+<script src="text.js?v=20261114h"></script>
+<script src="engine.js?v=20261114h"></script>
+<script src="ui.js?v=20261114h"></script>
+</body>
+</html>

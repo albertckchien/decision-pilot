@@ -4,14 +4,13 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>擇路 Pathwise｜如果當初走了另一條路</title>
-<meta name="description" content="挑一個人，看兩條路各走完一輩子。景氣、天災、壽命照 200 國的真實資料擲骰。">
+<title>擇路 Pathwise｜你會生在哪裡？</title>
+<meta name="description" content="照真實的出生人數抽一個國家，過完一生，再回到某一年走另一條路。景氣、天災、壽命照 200 國的真實資料擲骰。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/site.css?v=20261114a">
-<link rel="stylesheet" href="assets/sim.css?v=20261114a">
-<link rel="stylesheet" href="assets/home.css?v=20261114b">
+<link rel="stylesheet" href="assets/home.css?v=20261114c">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -19,7 +18,7 @@
 <header class="bar">
   <a class="wordmark" href="./">擇路 <span class="wm-en">Pathwise</span></a>
   <nav aria-label="主選單">
-    <a href="#play">人生模擬</a>
+    <a href="play/">再活一次</a>
     <a href="#say">你也卡住了嗎</a>
     <a href="reports.html">報告介紹</a>
   </nav>
@@ -28,26 +27,19 @@
 
 <main>
 
-  <!-- 開頭就能玩：挑一個人，A、B 兩條路並排播 -->
+  <!-- 開頭只有一件事：出生（2026-11-14 改，先玩再說） -->
   <section id="play" class="hero play wrap" aria-labelledby="hero-h">
-    <h1 id="hero-h" class="hero-h">
-      <span class="hl">如果當初<span class="slot" aria-hidden="true"><svg class="slot-svg" viewBox="0 0 220 78" fill="none"><path d="M6 39H86" stroke="#2B2125" stroke-width="3" stroke-linecap="round"/><path id="pa" d="M86 39C120 39 130 14 214 14" stroke="#6E1A34" stroke-width="3" stroke-linecap="round"/><path id="pb" d="M86 39C120 39 130 64 214 64" stroke="#C9A55A" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 8"/><circle cx="86" cy="39" r="6" fill="#FBF8F3" stroke="#2B2125" stroke-width="3"/><circle r="5.5" fill="#6E1A34"><animateMotion dur="3.6s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.75;1" calcMode="linear"><mpath href="#pa"/></animateMotion></circle><circle r="5.5" fill="#C9A55A"><animateMotion dur="3.6s" begin="0.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.75;1" calcMode="linear"><mpath href="#pb"/></animateMotion></circle></svg></span></span>
-      <span class="hl">走了另一條路</span>
-    </h1>
-    <p class="lead">挑一個人，看兩條路各走完一輩子。景氣、匯率、天災、壽命，照 200 國的真實資料擲骰。</p>
-    <ul class="who-list" aria-label="挑一個人">
-      <li><button type="button" class="who" data-who="singapore" aria-pressed="true"><span class="who-q">「公司要派我去新加坡兩年。」</span><span class="who-d">41 歲的業務，兩個小孩</span><span class="who-ab"><b>A</b> 全家外派　<b>B</b> 留在台灣</span></button></li>
-      <li><button type="button" class="who" data-who="cafe" aria-pressed="false"><span class="who-q">「生意不錯，要不要開第二家店？」</span><span class="who-d">34 歲的咖啡店老闆，小孩 3 歲</span><span class="who-ab"><b>A</b> 開第二家　<b>B</b> 守住一家</span></button></li>
-      <li><button type="button" class="who" data-who="engineer" aria-pressed="false"><span class="who-q">「想離開竹科，去新創寫軟體。」</span><span class="who-d">30 歲的工程師，還沒結婚</span><span class="who-ab"><b>A</b> 留在廠裡　<b>B</b> 轉去新創</span></button></li>
-      <li><button type="button" class="who" data-who="london" aria-pressed="false"><span class="who-q">「27 歲了，還來得及出國念書嗎？」</span><span class="who-d">27 歲的行銷專員</span><span class="who-ab"><b>A</b> 去英國念碩士　<b>B</b> 留在台灣</span></button></li>
-    </ul>
-  </section>
-
-  <section class="whatif" aria-label="人生模擬">
-    <div class="wrap whatif-box" id="sim-root">
-      <noscript><p>這裡是可以播放的人生模擬，要開啟 JavaScript 才看得到。</p></noscript>
-    </div>
-    <p class="wrap small muted who-note">四個人都是虛構的，數字是示意。</p>
+    <h1 id="hero-h" class="hero-h">你會生在<br>哪裡？</h1>
+    <p class="lead">今天世界上大約有 36 萬個嬰兒出生。照真實的出生人數抽一個國家，過完一生，大約 5 分鐘。過完之後，還能回到某一年，走另一條路。</p>
+    <form class="birth-go" action="play/" method="get">
+      <label for="go-age">你今年幾歲？<span class="small muted">跟你同一年出生</span></label>
+      <div class="birth-go-row">
+        <input id="go-age" name="age" type="number" inputmode="numeric" min="0" max="90" value="30" required>
+        <button class="btn" type="submit">出生</button>
+      </div>
+    </form>
+    <p class="small muted">依真實統計，可能遇到死亡、戰爭、童婚等沉重情節，建議 15 歲以上。</p>
+    <p class="small muted">家境、性別、城鄉都是隨機的。1996 到 2025 年的國家大事照真實歷史，之後照過去 30 年的規律推估。這是示意，不是預測。</p>
   </section>
 
   <section id="say" class="say" aria-labelledby="say-h">
@@ -88,12 +80,10 @@
 
 <footer class="foot wrap">
   <p class="wordmark">擇路 <span class="wm-en">Pathwise</span></p>
-  <nav aria-label="頁尾"><a href="#play">人生模擬</a><a href="#say">你也卡住了嗎</a><a href="reports.html">報告介紹</a><a href="begin.html">寫下卡住的事</a></nav>
+  <nav aria-label="頁尾"><a href="play/">再活一次</a><a href="#say">你也卡住了嗎</a><a href="reports.html">報告介紹</a><a href="begin.html">寫下卡住的事</a></nav>
   <p class="small">讀書會試跑版　© 2026 擇路 Pathwise，版權所有</p>
 </footer>
 
-<script src="assets/pixel.js?v=20261114a"></script>
-<script src="assets/sim.js?v=20261114a"></script>
-<script src="assets/home.js?v=20261114a"></script>
+<script src="assets/home.js?v=20261114c"></script>
 </body>
 </html>
