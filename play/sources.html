@@ -47,7 +47,7 @@
     <li><b>烏普薩拉衝突資料計畫 UCDP 26.1</b><span>武裝衝突、組織性暴力、大規模攻擊，以及衝突波及多少地區。授權 CC BY 4.0。<a class="link" href="https://ucdp.uu.se/">ucdp.uu.se</a></span></li>
     <li><b>V-Dem（Varieties of Democracy，Coppedge et al., V-Dem Institute）</b><span>政體和政變。遊戲用的是由它算出的機率表（<code>data/vdem.json</code>），國家年表裡的政變標籤也由它推算，這兩部分依 CC BY-SA 4.0 釋出，改作請用同樣授權。畫面上不顯示 V-Dem 的數值。<a class="link" href="https://www.v-dem.net/">v-dem.net</a></span></li>
     <li><b>加拿大央行／英格蘭銀行 主權違約資料庫</b><span>政府倒債。依網站條款可自由使用、要註明出處。<a class="link" href="https://www.bankofcanada.ca/">bankofcanada.ca</a></span></li>
-    <li><b>美國地質調查局 USGS 地震目錄</b><span>地震機率：只算國界 100 公里內、震源深度 70 公里內的淺層 5.5 級以上地震，所以「一帶」的地震可能在外海或鄰國；更深的不算：600 公里那種（例如秘魯、巴西交界地底）地面幾乎感覺不到；但 70～200 公里的中深地震（例如羅馬尼亞、阿富汗興都庫什一帶）有時還是會成災，這部分遊戲裡少算了。公有領域。<a class="link" href="https://earthquake.usgs.gov/">earthquake.usgs.gov</a></span></li>
+    <li><b>美國地質調查局 USGS 地震目錄</b><span>地震機率：只算國界 100 公里內的 5.5 級以上地震，所以「一帶」的地震可能在外海或鄰國。震源 70 公里內的淺層地震全算；70～300 公里的中深地震只算 7 級以上（例如阿富汗興都庫什、羅馬尼亞那幾次會成災的），7 級以下的中深地震不算（這種多半災情小）；更深的不算，600 公里那種（例如秘魯、巴西交界地底）地面幾乎感覺不到。公有領域。<a class="link" href="https://earthquake.usgs.gov/">earthquake.usgs.gov</a></span></li>
     <li><b>NOAA IBTrACS v04r01</b><span>颱風和熱帶氣旋機率。開放取用。<a class="link" href="https://www.ncei.noaa.gov/products/international-best-track-archive">ncei.noaa.gov</a></span></li>
     <li><b>Natural Earth</b><span>一級行政區（算衝突波及範圍）。公有領域。<a class="link" href="https://www.naturalearthdata.com/">naturalearthdata.com</a></span></li>
   </ul>
@@ -84,7 +84,7 @@
     var births = s.births.map(function (b) { return row(b.name, b.game, b.real, '%'); }).join('');
     box.innerHTML = '<p class="small muted">' + esc(s.date) + '，系統自己玩了 ' + esc(s.runs.toLocaleString('zh-TW')) + ' 次人生。</p>' +
       '<h3 class="vs-h">壽命</h3><table class="vs">' + head('', '遊戲', '生命表') + '<tbody>' + life + '</tbody></table>' +
-      '<p class="small muted">生命表那一欄：每一局照同國、同出生年、同性別的聯合國生命表算期望值，再平均。平均餘命那三列，遊戲只算活到那個年紀的人，生命表那邊照活到那個年紀的機率加權。</p>' +
+      '<p class="small muted">生命表那一欄：每一局照同國、同出生年、同性別的聯合國生命表算期望值，再平均。平均餘命那三列，遊戲只算活到那個年紀的人，生命表那邊照活到那個年紀的機率加權。系統只玩了 ' + esc(s.runs.toLocaleString('zh-TW')) + ' 次，差 2 歲、2～3 個百分點以內是抽樣會晃的範圍。</p>' +
       '<h3 class="vs-h">生在哪一國（出生最多的 10 國）</h3><table class="vs">' + head('', '遊戲抽到', '真實出生人數') + '<tbody>' + births + '</tbody></table>' +
       '<p class="small muted">這張表另外只抽國家抽了 ' + esc((s.birthDraws || s.runs).toLocaleString('zh-TW')) + ' 次；真實那一欄照 10、20、25、30、35、40 歲六種年紀各占六分之一的出生年加權（1996 年以前出生的用 1996 年的出生人數）。抽樣會晃，差個零點幾是正常的。</p>';
   }).catch(function () { box.innerHTML = '<p class="small muted">對照表載入不了，重新整理一次試試。</p>'; });

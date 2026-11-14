@@ -126,6 +126,9 @@ fieldset { border: 0; padding: 0; margin: 0; }
 .bb-legend li i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--c); flex: none; }
 .bb-legend b { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
 .bb-home { margin-top: 0.85rem; font-weight: 500; }
+.bb-go { margin-top: 0.9rem; padding: 0; border: 0; background: none; font: inherit; font-weight: 700; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 0.2em; }
+.bb-go::after { content: " →"; }
+.bb-go:hover { color: var(--accent-hover); }
 .bb-note { margin-top: 0.6rem; font-size: var(--step-small); color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .babies, .bb-grid i { transition: none; } }
 .has-babies .babies { margin-top: 2.5rem; }

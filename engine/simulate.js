@@ -254,7 +254,7 @@ function main() {
   // 小孩的稱呼照年紀排：老大、老二、老三…（嚴審 F7）
   const order = (fam.kids || []).map((a, i) => i).sort((x, y) => fam.kids[y] - fam.kids[x]);
   const kidLabel = i => (fam.kids.length === 1 ? '小孩' : ['老大', '老二', '老三', '老四', '老五'][order.indexOf(i)] || '小孩');
-  // 記下用的是哪一版國家資料（每週資料管線會換規則，例如 2026-11-14 地震改成只算淺層），客人問「怎麼跟上次不一樣」查得到
+  // 記下用的是哪一版國家資料（每週資料管線會換規則，例如 2026-11-15 地震改成淺層全算、中深只算 7 級以上），客人問「怎麼跟上次不一樣」查得到
   // data_id：這份報告用的國家資料版本（重跑時用 --data 指定）；rules_version 讀模擬實際用的 rules.json
   const ver = { version: D.dataId, rules_version: D.rulesVersion };
   const out = { case: P.case, generated: new Date().toISOString().slice(0, 10), runs: N, start_age: P.age, kids: fam.kids || [], gender: sexMe,

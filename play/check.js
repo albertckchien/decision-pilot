@@ -237,7 +237,8 @@ if (!fails.length && N >= 1000 && MODE !== 'calibrate' && MODE !== 'snapshot') {
   const M = 20000, cnt = {};
   for (let i = 0; i < M; i++) { const age = [10, 20, 25, 30, 35, 40][i % 6], iso = E.pickCountry(index, E.NOW - age, E.rng((900000 + i * 7919) ^ 0xC0FFEE)); cnt[iso] = (cnt[iso] || 0) + 1; }
   const top = rows.map(([iso, b]) => [iso, b]).sort((a, b) => b[1].w - a[1].w).slice(0, 10).map(([iso, b]) => ({ name: b.name, game: r1((cnt[iso] || 0) / M * 100), real: r1(b.w / totB * 100) }));
-  const stats = { date: new Date().toISOString().slice(0, 10), engine: E.ENGINE_V, data: DATA_V, runs: N,
+  const d0 = new Date(), stats = { date: d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0'),   // 本地日期（toISOString 是 UTC，台灣早上會差一天）
+    engine: E.ENGINE_V, data: DATA_V, runs: N,
     life: { game: r1(totAge / totN), real: r1(totExp / totN) }, u5: { game: r1(under5 / N * 100), real: r1(u5exp / N * 100) },
     dist: distRows.map(([k, a, b, , u]) => ({ k, game: r1(a), real: r1(b), u: u.trim() })), births: top, birthDraws: M };
   fs.writeFileSync(path.join(__dirname, 'stats.json'), JSON.stringify(stats, null, 1));

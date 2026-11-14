@@ -41,11 +41,14 @@
       '<div class="bb-grid" role="img" aria-label="' + esc(yr + ' 年出生的 100 個嬰兒：' + top.map((c, i) => c.name + ' ' + n[i] + ' 個').join('、') + '，其他 ' + rest.length + ' 國 ' + n[TOP] + ' 個') + '">' + dots.join('') + '</div>' +
       '<ul class="bb-legend">' + legend + '</ul>' +
       (h && top.every(c => c.iso !== h.iso) ? '<p class="bb-home">' + esc((homeEl ? '你住的' : '') + h.name + '：' + perHome(h.p)) + '</p>' : '') +
+      '<button type="button" class="bb-go">你會是哪一個點？出生看看</button>' +
       '<p class="bb-note">' + (by < y0 ? '你出生那年沒有資料，用 ' + y0 + ' 年的出生人數。' : '') + '照聯合國《世界人口展望 2024》各國出生人數' + (by >= 2024 ? '（推估）' : '') + '。遊戲就照這個比例抽。</p>';
   }
 
   fetch(fig.dataset.src, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(j => { idx = j; render(); fig.classList.add('on'); })
+    // 「你會是哪一個點？」直接送出年紀那個表單（圖是按「出生」的理由，不是搶它的注意力；嚴審 2026-11-14 用戶選 B）
+    .then(() => fig.addEventListener('click', e => { if (!e.target.closest('.bb-go')) return; const f = ageEl && ageEl.form; if (f && f.requestSubmit) f.requestSubmit(); else if (f) f.submit(); }))
     .catch(() => { fig.hidden = true; });
   if (ageEl) ageEl.addEventListener('input', render);
   if (homeEl) homeEl.addEventListener('change', render);
